@@ -1,59 +1,95 @@
-import { Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
+import { WalletTypeSheet } from '@/components/WalletTypeSheet';
+import { addWallet, getWallets, type Wallet } from '@/utils/walletStorage';
 
 export default function HomeScreen() {
+  const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
 
+  useEffect(() => {
+    loadWallets();
+  }, []);
+
+  const loadWallets = async () => {
+    const savedWallets = await getWallets();
+    setWallets(savedWallets);
+  };
+
+  const handleAddWallet = async (wallet: Wallet) => {
+    await addWallet(wallet);
+    await loadWallets();
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }
-      contentInsets={insets}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Browser tab to access your favorite dApps.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+      <ThemedText type="title" style={styles.title}>Wallets</ThemedText>
+      
+      {wallets.map((wallet, index) => (
+        <ThemedView key={index} style={styles.walletCard}>
+          <ThemedText style={styles.walletType}>
+            {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
+          </ThemedText>
+          <ThemedText style={styles.walletAddress}>
+            {wallet.address}
+          </ThemedText>
+        </ThemedView>
+      ))}
+      
+      <TouchableOpacity
+        style={styles.connectButton}
+        onPress={() => setIsWalletTypeSheetVisible(true)}
+        activeOpacity={0.8}>
+        <ThemedText style={styles.buttonText}>Connect new key</ThemedText>
+      </TouchableOpacity>
+
+      <WalletTypeSheet
+        isVisible={isWalletTypeSheetVisible}
+        onClose={() => setIsWalletTypeSheetVisible(false)}
+        onAddWallet={handleAddWallet}
+      />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  title: {
+    fontSize: 32,
+    marginBottom: 24,
+  },
+  walletCard: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  walletType: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  walletAddress: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  connectButton: {
+    backgroundColor: '#0a7ea4',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 8,
+    marginTop: 12,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

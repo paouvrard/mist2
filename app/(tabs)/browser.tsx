@@ -31,7 +31,6 @@ export default function BrowserScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigationBarHeight = 50; // Fixed height for the navigation bar
   const { setHideTabBar } = useTabVisibility();
-  const address = '0x10AfAE3f75c4AbCE599966602e859d499E6745E4';
 
   // Update tab visibility when showing/hiding welcome screen
   useEffect(() => {
@@ -43,15 +42,15 @@ export default function BrowserScreen() {
     setIsWalletSheetVisible(true);
   }, []);
 
-  const handleConnectConfirm = useCallback(() => {
+  const handleConnectConfirm = useCallback((wallet: { address: string }) => {
     if (pendingRequestId !== null && webViewRef.current) {
       setIsConnected(true);
-      setConnectedAddress(address);
+      setConnectedAddress(wallet.address);
       webViewRef.current.injectJavaScript(`
         window.ethereum._resolveRequest({
           id: ${pendingRequestId},
           type: 'eth_requestAccounts',
-          result: ['${address}']
+          result: ['${wallet.address}']
         });
       `);
       setIsWalletSheetVisible(false);
@@ -82,6 +81,17 @@ export default function BrowserScreen() {
         window.ethereum._address = null;
         window.ethereum._emitEvent('accountsChanged', []);
         window.ethereum._emitEvent('disconnect', { code: 4900, message: 'User disconnected' });
+      `);
+    }
+  }, []);
+
+  const handleSwitchWallet = useCallback((wallet: { address: string }) => {
+    setConnectedAddress(wallet.address);
+    setIsWalletInfoSheetVisible(false);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._address = '${wallet.address}';
+        window.ethereum._emitEvent('accountsChanged', ['${wallet.address}']);
       `);
     }
   }, []);
@@ -258,7 +268,8 @@ export default function BrowserScreen() {
         isVisible={isWalletInfoSheetVisible}
         onClose={() => setIsWalletInfoSheetVisible(false)}
         onDisconnect={handleDisconnect}
-        walletAddress={address}
+        onSwitchWallet={handleSwitchWallet}
+        walletAddress={connectedAddress ?? ''}
       />
     </View>
   );

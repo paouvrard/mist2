@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -12,11 +12,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { getWallets, type Wallet } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
   onDisconnect: () => void;
+  onSwitchWallet: (wallet: Wallet) => void;
   walletAddress: string;
 }
 
@@ -25,15 +27,17 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function WalletInfoSheet({ isVisible, onClose, onDisconnect, walletAddress }: Props) {
+export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWallet, walletAddress }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
 
   useEffect(() => {
     if (isVisible) {
+      loadWallets();
       setIsRendered(true);
       opacity.value = withTiming(1);
       translateY.value = withSpring(0, SPRING_CONFIG);
@@ -46,6 +50,11 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, walletAddres
       translateY.value = withSpring(1000, SPRING_CONFIG);
     }
   }, [isVisible]);
+
+  const loadWallets = async () => {
+    const savedWallets = await getWallets();
+    setWallets(savedWallets);
+  };
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -82,16 +91,36 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, walletAddres
         <ThemedText type="title" style={styles.title}>
           Connected Wallet
         </ThemedText>
-        <ThemedView style={styles.addressContainer}>
-          <ThemedText style={styles.addressText}>
-            {walletAddress}
-          </ThemedText>
-        </ThemedView>
+        
+        <ScrollView style={styles.walletList}>
+          {wallets.map((wallet, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.walletOption,
+                wallet.address === walletAddress && styles.selectedWallet,
+              ]}
+              onPress={() => {
+                if (wallet.address !== walletAddress) {
+                  onSwitchWallet(wallet);
+                }
+              }}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.walletType}>
+                {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
+              </ThemedText>
+              <ThemedText style={styles.walletAddress}>
+                {wallet.address}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <TouchableOpacity
           style={[styles.button, styles.disconnectButton]}
           onPress={onDisconnect}
           activeOpacity={0.8}>
-          <ThemedText style={styles.buttonText}>Disconnect address</ThemedText>
+          <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
         </TouchableOpacity>
       </Animated.View>
     </>
@@ -129,15 +158,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  addressContainer: {
+  walletList: {
+    maxHeight: 200,
+  },
+  walletOption: {
     padding: 16,
     borderRadius: 12,
     backgroundColor: 'rgba(0,0,0,0.05)',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  addressText: {
-    textAlign: 'center',
+  selectedWallet: {
+    backgroundColor: 'rgba(10,126,164,0.1)',
+    borderColor: '#0a7ea4',
+    borderWidth: 1,
+  },
+  walletType: {
     fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  walletAddress: {
+    fontSize: 14,
+    opacity: 0.7,
   },
   button: {
     padding: 16,
