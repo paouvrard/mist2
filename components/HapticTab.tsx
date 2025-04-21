@@ -1,6 +1,7 @@
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
 import * as Haptics from 'expo-haptics';
+import { View, StyleSheet } from 'react-native';
 
 export function HapticTab(props: BottomTabBarButtonProps) {
   return (
@@ -12,7 +13,18 @@ export function HapticTab(props: BottomTabBarButtonProps) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
         props.onPressIn?.(ev);
-      }}
-    />
+      }}>
+      <View style={styles.iconContainer}>
+        {props.children}
+      </View>
+    </PlatformPressable>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    paddingTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

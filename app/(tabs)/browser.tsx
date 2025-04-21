@@ -43,7 +43,7 @@ export default function BrowserScreen() {
   const handleConnectConfirm = useCallback(() => {
     if (pendingRequestId !== null && webViewRef.current) {
       setIsConnected(true);
-      const address = '0x0000000000000000000000000000000000000000';
+      const address = '0x10AfAE3f75c4AbCE599966602e859d499E6745E4';
       setConnectedAddress(address);
       webViewRef.current.injectJavaScript(`
         window.ethereum._resolveRequest({
@@ -184,7 +184,7 @@ export default function BrowserScreen() {
     <View style={[styles.container, { backgroundColor }]}>
       <View style={[styles.webviewContainer, { 
         paddingTop: insets.top,
-        marginBottom: navigationBarHeight,
+        marginBottom: navigationBarHeight + tabBarHeight,
       }]}>
         {url && (
           <WebView
@@ -202,7 +202,10 @@ export default function BrowserScreen() {
           />
         )}
       </View>
-      <View style={[styles.navigationBar, { bottom: 0 }]}>
+      <View style={[styles.navigationBar, { 
+        bottom: tabBarHeight,
+        marginBottom: 20
+      }]}>
         <TouchableOpacity 
           onPress={handleBackPress}
           style={styles.button}>
@@ -244,8 +247,8 @@ const styles = StyleSheet.create({
   navigationBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(0,0,0,0.3)',
     backgroundColor: 'rgba(255,255,255,0.8)',
@@ -262,7 +265,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     marginHorizontal: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },

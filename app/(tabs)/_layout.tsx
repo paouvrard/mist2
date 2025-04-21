@@ -36,15 +36,15 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home', // Keep title for accessibility
-            tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
+            title: 'Wallets', // Keep title for accessibility
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="key.fill" color={color} />,
           }}
         />
         <Tabs.Screen
           name="browser"
           options={{
             title: 'Browser', // Keep title for accessibility
-            tabBarIcon: ({ color }) => <IconSymbol size={24} name="safari.fill" color={color} />,
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="safari.fill" color={color} />,
           }}
         />
       </Tabs>
@@ -54,7 +54,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 49, // Standard iOS tab bar height
+    height: 70,
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -62,6 +62,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(0,0,0,0.3)',
     elevation: 8,
+    justifyContent: 'center', // Center items vertically
+    paddingBottom: 0, // Remove default padding to ensure true centering
   },
   hidden: {
     display: 'none',
