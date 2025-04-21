@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
+import { WalletInfoSheet } from '@/components/WalletInfoSheet';
 import { WelcomePage } from '@/components/WelcomePage';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
@@ -19,6 +20,7 @@ export default function BrowserScreen() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
+  const [isWalletInfoSheetVisible, setIsWalletInfoSheetVisible] = useState(false);
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -29,6 +31,7 @@ export default function BrowserScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigationBarHeight = 50; // Fixed height for the navigation bar
   const { setHideTabBar } = useTabVisibility();
+  const address = '0x10AfAE3f75c4AbCE599966602e859d499E6745E4';
 
   // Update tab visibility when showing/hiding welcome screen
   useEffect(() => {
@@ -43,7 +46,6 @@ export default function BrowserScreen() {
   const handleConnectConfirm = useCallback(() => {
     if (pendingRequestId !== null && webViewRef.current) {
       setIsConnected(true);
-      const address = '0x10AfAE3f75c4AbCE599966602e859d499E6745E4';
       setConnectedAddress(address);
       webViewRef.current.injectJavaScript(`
         window.ethereum._resolveRequest({
@@ -69,6 +71,20 @@ export default function BrowserScreen() {
       setPendingRequestId(null);
     }
   }, [pendingRequestId]);
+
+  const handleDisconnect = useCallback(() => {
+    setIsConnected(false);
+    setConnectedAddress(null);
+    setIsWalletInfoSheetVisible(false);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._connected = false;
+        window.ethereum._address = null;
+        window.ethereum._emitEvent('accountsChanged', []);
+        window.ethereum._emitEvent('disconnect', { code: 4900, message: 'User disconnected' });
+      `);
+    }
+  }, []);
 
   const handleMessage = useCallback((event: any) => {
     try {
@@ -204,7 +220,7 @@ export default function BrowserScreen() {
       </View>
       <View style={[styles.navigationBar, { 
         bottom: tabBarHeight,
-        marginBottom: 20
+        marginBottom: 6
       }]}>
         <TouchableOpacity 
           onPress={handleBackPress}
@@ -226,12 +242,23 @@ export default function BrowserScreen() {
           keyboardType="url"
           returnKeyType="go"
         />
+        <TouchableOpacity 
+          onPress={() => setIsWalletInfoSheetVisible(true)}
+          style={styles.button}>
+          <IconSymbol size={20} name="key.fill" color={textColor} />
+        </TouchableOpacity>
       </View>
       <WalletConnectSheet
         isVisible={isWalletSheetVisible}
-        onClose={() => handleConnectCancel()}
+        onClose={handleConnectCancel}
         onConnect={handleConnectConfirm}
         onCancel={handleConnectCancel}
+      />
+      <WalletInfoSheet
+        isVisible={isWalletInfoSheetVisible}
+        onClose={() => setIsWalletInfoSheetVisible(false)}
+        onDisconnect={handleDisconnect}
+        walletAddress={address}
       />
     </View>
   );

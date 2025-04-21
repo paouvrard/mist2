@@ -91,6 +91,20 @@ export const getEthereumProvider = (): string => {
         },
 
         // Standard EIP-1193 methods
+        _emitEvent: function(event, data) {
+          if (!this._events) return;
+          const handlers = this._events[event];
+          if (handlers) {
+            handlers.forEach(handler => {
+              try {
+                handler(data);
+              } catch (error) {
+                console.error('Error in event handler:', error);
+              }
+            });
+          }
+        },
+
         on: function(event, callback) {
           if (!this._events) this._events = {};
           if (!this._events[event]) this._events[event] = [];
