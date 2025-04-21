@@ -1,7 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 
@@ -11,91 +12,130 @@ const INJECT_PROVIDER_JS = getEthereumProvider();
 export default function BrowserScreen() {
   const [url, setUrl] = useState('https://app.uniswap.org');
   const [currentUrl, setCurrentUrl] = useState('https://app.uniswap.org');
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
+  const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
+  const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const webViewRef = useRef<WebView>(null);
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
   const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+
+  const handleConnect = useCallback((request: any, id: number) => {
+    setPendingRequestId(id);
+    setIsWalletSheetVisible(true);
+  }, []);
+
+  const handleConnectConfirm = useCallback(() => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      setIsConnected(true);
+      const address = '0x0000000000000000000000000000000000000000';
+      setConnectedAddress(address);
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          type: 'eth_requestAccounts',
+          result: ['${address}']
+        });
+      `);
+      setIsWalletSheetVisible(false);
+      setPendingRequestId(null);
+    }
+  }, [pendingRequestId]);
+
+  const handleConnectCancel = useCallback(() => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          error: { code: 4001, message: 'User rejected the request.' }
+        });
+      `);
+      setIsWalletSheetVisible(false);
+      setPendingRequestId(null);
+    }
+  }, [pendingRequestId]);
 
   const handleMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'ethereum_request') {
-        handleEthereumRequest(data.payload, data.id);
+        switch (data.payload.method) {
+          case 'eth_requestAccounts':
+            if (!isConnected) {
+              handleConnect(data.payload, data.id);
+            } else if (connectedAddress && webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  type: 'eth_requestAccounts',
+                  result: ['${connectedAddress}']
+                });
+              `);
+            }
+            break;
+            
+          case 'eth_chainId':
+            if (webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  result: '0x1'
+                });
+              `);
+            }
+            break;
+            
+          case 'net_version':
+            if (webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  result: '1'
+                });
+              `);
+            }
+            break;
+
+          case 'eth_accounts':
+            if (webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  result: ${isConnected && connectedAddress ? `['${connectedAddress}']` : '[]'}
+                });
+              `);
+            }
+            break;
+
+          case 'wallet_switchEthereumChain':
+            if (webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  result: null
+                });
+              `);
+            }
+            break;
+            
+          default:
+            if (webViewRef.current) {
+              webViewRef.current.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: {
+                    code: 4200,
+                    message: 'Method ${data.payload.method} not supported'
+                  }
+                });
+              `);
+            }
+        }
       }
     } catch (error) {
       console.error('Error handling message:', error);
     }
-  }, []);
-
-  const handleEthereumRequest = async (request: any, id: number) => {
-    try {
-      let response: any;
-      
-      switch (request.method) {
-        case 'eth_requestAccounts':
-          response = {
-            id,
-            result: ['0x0000000000000000000000000000000000000000']
-          };
-          break;
-        
-        case 'eth_chainId':
-          response = {
-            id,
-            result: '0x1' // mainnet
-          };
-          break;
-          
-        case 'net_version':
-          response = {
-            id,
-            result: '1' // mainnet
-          };
-          break;
-
-        case 'eth_accounts':
-          response = {
-            id,
-            result: ['0x0000000000000000000000000000000000000000']
-          };
-          break;
-
-        case 'wallet_switchEthereumChain':
-          response = {
-            id,
-            result: null // success
-          };
-          break;
-          
-        default:
-          response = {
-            id,
-            error: {
-              code: 4200,
-              message: `Method ${request.method} not supported`
-            }
-          };
-          console.warn('Unsupported Ethereum request:', request.method);
-      }
-
-      // Send response back to WebView
-      webViewRef.current?.injectJavaScript(`
-        window.ethereum._resolveRequest(${JSON.stringify(response)});
-        true;
-      `);
-    } catch (error) {
-      console.error('Error handling Ethereum request:', error);
-      webViewRef.current?.injectJavaScript(`
-        window.ethereum._resolveRequest({
-          id: ${id},
-          error: {
-            code: 4001,
-            message: 'Error processing request'
-          }
-        });
-        true;
-      `);
-    }
-  };
+  }, [isConnected, connectedAddress, handleConnect]);
 
   const goToUrl = (input: string) => {
     let processedUrl = input;
@@ -141,6 +181,12 @@ export default function BrowserScreen() {
         javaScriptEnabled={true}
         domStorageEnabled={true}
       />
+      <WalletConnectSheet
+        isVisible={isWalletSheetVisible}
+        onClose={() => handleConnectCancel()}
+        onConnect={handleConnectConfirm}
+        onCancel={handleConnectCancel}
+      />
     </View>
   );
 }
@@ -149,6 +195,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 50,
+    paddingBottom: 49, // Match the tab bar height
   },
   addressBar: {
     flexDirection: 'row',

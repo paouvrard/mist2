@@ -1,3 +1,19 @@
+interface EIP6963ProviderInfo {
+  uuid: string;
+  name: string;
+  icon: string;
+  rdns: string;
+}
+
+interface EIP6963ProviderDetail {
+  info: EIP6963ProviderInfo;
+  provider: any;
+}
+
+interface EIP6963AnnounceProviderEvent extends CustomEvent {
+  detail: EIP6963ProviderDetail;
+}
+
 interface EthereumRequest {
   method: string;
   params?: any[];
@@ -18,14 +34,30 @@ interface EthereumEvents {
 export const getEthereumProvider = (): string => {
   return `
     (function() {
+      const providerInfo = {
+        uuid: 'mist2-mobile-' + Math.random().toString(36).slice(2),
+        name: 'Mist2 Mobile',
+        icon: '', // TODO: Add icon URL
+        rdns: 'app.mist2'
+      };
+
       window.ethereum = {
         isMetaMask: true,
         _callbacks: {},
         _nextId: 1,
+        _connected: false,
+        _address: null,
         
-        request: function(request) {
+        request: async function(request) {
           const id = this._nextId++;
           return new Promise((resolve, reject) => {
+            // For eth_requestAccounts, check if already connected
+            if (request.method === 'eth_requestAccounts') {
+              if (this._connected && this._address) {
+                return resolve([this._address]);
+              }
+            }
+            
             this._callbacks[id] = { resolve, reject };
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'ethereum_request',
@@ -45,6 +77,13 @@ export const getEthereumProvider = (): string => {
             if (response.error) {
               callback.reject(response.error);
             } else {
+              // Update connected state and address if this was a successful connection
+              if (response.result && Array.isArray(response.result) && 
+                  this._callbacks[response.id] && 
+                  response.type === 'eth_requestAccounts') {
+                this._connected = true;
+                this._address = response.result[0];
+              }
               callback.resolve(response.result);
             }
             delete this._callbacks[response.id];
@@ -66,13 +105,27 @@ export const getEthereumProvider = (): string => {
         // Standard provider properties
         chainId: '0x1',
         networkVersion: '1',
-        isConnected: function() { return true; },
-        selectedAddress: '0x0000000000000000000000000000000000000000'
+        isConnected: function() { return this._connected; },
+        get selectedAddress() { return this._address; }
       };
 
-      // Notify dapps that provider is ready
-      const readyEvent = new Event('ethereum#initialized');
-      window.dispatchEvent(readyEvent);
+      // Announce this provider according to EIP-6963
+      function announceProvider() {
+        const providerDetail = {
+          info: providerInfo,
+          provider: window.ethereum
+        };
+        
+        window.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: providerDetail
+        }));
+      }
+
+      // Listen for provider requests
+      window.addEventListener('eip6963:requestProvider', announceProvider);
+      
+      // Initial announcement
+      announceProvider();
     })();
     true;
   `;
