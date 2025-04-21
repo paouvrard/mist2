@@ -1,24 +1,39 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { StyleSheet, TextInput, View, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
+import { WelcomePage } from '@/components/WelcomePage';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
+import { useTabVisibility } from '@/hooks/useTabVisibility';
 
 // Get the provider injection code
 const INJECT_PROVIDER_JS = getEthereumProvider();
 
 export default function BrowserScreen() {
-  const [url, setUrl] = useState('https://app.uniswap.org');
-  const [currentUrl, setCurrentUrl] = useState('https://app.uniswap.org');
+  const [url, setUrl] = useState('');
+  const [currentUrl, setCurrentUrl] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [canGoBack, setCanGoBack] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
   const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const navigationBarHeight = 50; // Fixed height for the navigation bar
+  const { setHideTabBar } = useTabVisibility();
+
+  // Update tab visibility when showing/hiding welcome screen
+  useEffect(() => {
+    setHideTabBar(!showWelcome);
+  }, [showWelcome, setHideTabBar]);
 
   const handleConnect = useCallback((request: any, id: number) => {
     setPendingRequestId(id);
@@ -143,20 +158,60 @@ export default function BrowserScreen() {
       processedUrl = 'https://' + input;
     }
     setUrl(processedUrl);
+    setCurrentUrl(processedUrl);
+    setShowWelcome(false);
   };
+
+  const handleHomePress = () => {
+    setShowWelcome(true);
+    setUrl('');
+    setCurrentUrl('');
+  };
+
+  const handleBackPress = () => {
+    if (webViewRef.current && canGoBack) {
+      webViewRef.current.goBack();
+    } else {
+      handleHomePress();
+    }
+  };
+
+  if (showWelcome) {
+    return <WelcomePage onNavigate={goToUrl} />;
+  }
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <View style={styles.addressBar}>
+      <View style={[styles.webviewContainer, { 
+        paddingTop: insets.top,
+        marginBottom: navigationBarHeight,
+      }]}>
+        {url && (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: url }}
+            style={styles.webview}
+            onNavigationStateChange={(navState) => {
+              setCurrentUrl(navState.url);
+              setCanGoBack(navState.canGoBack);
+            }}
+            injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
+            onMessage={handleMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+          />
+        )}
+      </View>
+      <View style={[styles.navigationBar, { bottom: 0 }]}>
         <TouchableOpacity 
-          onPress={() => webViewRef.current?.goBack()}
+          onPress={handleBackPress}
           style={styles.button}>
           <IconSymbol size={20} name="chevron.left" color={textColor} />
         </TouchableOpacity>
         <TouchableOpacity 
-          onPress={() => webViewRef.current?.goForward()}
+          onPress={handleHomePress}
           style={styles.button}>
-          <IconSymbol size={20} name="chevron.right" color={textColor} />
+          <IconSymbol size={20} name="house.fill" color={textColor} />
         </TouchableOpacity>
         <TextInput
           style={[styles.input, { color: textColor }]}
@@ -169,18 +224,6 @@ export default function BrowserScreen() {
           returnKeyType="go"
         />
       </View>
-      <WebView
-        ref={webViewRef}
-        source={{ uri: url }}
-        style={styles.webview}
-        onNavigationStateChange={(navState) => {
-          setCurrentUrl(navState.url);
-        }}
-        injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
-        onMessage={handleMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-      />
       <WalletConnectSheet
         isVisible={isWalletSheetVisible}
         onClose={() => handleConnectCancel()}
@@ -194,14 +237,23 @@ export default function BrowserScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
-    paddingBottom: 49, // Match the tab bar height
   },
-  addressBar: {
+  webviewContainer: {
+    flex: 1,
+  },
+  navigationBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    backdropFilter: 'blur(10px)',
+    height: 50,
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   button: {
     padding: 10,
