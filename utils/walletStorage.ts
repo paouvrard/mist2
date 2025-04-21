@@ -17,7 +17,25 @@ export type Lattice1Wallet = {
   data: string;
 };
 
-export type Wallet = ViewOnlyWallet | HitoWallet | Lattice1Wallet;
+export type WalletConnectWallet = {
+  type: 'wallet-connect';
+  address: string;
+  data: string;
+};
+
+export type LedgerWallet = {
+  type: 'ledger';
+  address: string;
+  data: string;
+};
+
+export type EoaWallet = {
+  type: 'eoa';
+  address: string;
+  privateKey: string;
+};
+
+export type Wallet = ViewOnlyWallet | HitoWallet | Lattice1Wallet | WalletConnectWallet | LedgerWallet | EoaWallet;
 
 const STORAGE_KEY = 'wallets';
 

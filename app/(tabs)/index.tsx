@@ -44,7 +44,7 @@ export default function HomeScreen() {
         style={styles.connectButton}
         onPress={() => setIsWalletTypeSheetVisible(true)}
         activeOpacity={0.8}>
-        <ThemedText style={styles.buttonText}>Connect new key</ThemedText>
+        <ThemedText style={styles.buttonText}>Connect new wallet</ThemedText>
       </TouchableOpacity>
 
       <WalletTypeSheet
