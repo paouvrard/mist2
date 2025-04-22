@@ -35,6 +35,7 @@ export const getEthereumProvider = (): string => {
   return `
     (function() {
       // Console logging bridge
+      /*
       const originalConsole = window.console;
       window.console = {
         log: (...args) => {
@@ -86,6 +87,7 @@ export const getEthereumProvider = (): string => {
         }));
         return false;
       };
+      */
 
       window.onunhandledrejection = (event) => {
         window.ReactNativeWebView.postMessage(JSON.stringify({
