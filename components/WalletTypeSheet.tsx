@@ -8,16 +8,18 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppKit } from '@reown/appkit-wagmi-react-native';
+import { useWalletClient } from 'wagmi';
 
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { ViewOnlyWallet } from '@/utils/walletStorage';
+import { ViewOnlyWallet, WalletConnectWallet } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
-  onAddWallet: (wallet: ViewOnlyWallet) => void;
+  onAddWallet: (wallet: ViewOnlyWallet | WalletConnectWallet) => void;
 }
 
 const SPRING_CONFIG = {
@@ -33,6 +35,8 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
   const [address, setAddress] = useState('');
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
+  const { open } = useAppKit();
+  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     if (isVisible) {
@@ -73,6 +77,23 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
     }
   };
 
+  const handleWalletConnectSelect = async () => {
+    try {
+      await open();
+      
+      if (walletClient) {
+        onAddWallet({
+          type: 'wallet-connect',
+          address: walletClient.account.address
+        });
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('WalletConnect error:', error);
+    }
+  };
+
   if (!isRendered && !isVisible) {
     return null;
   }
@@ -110,6 +131,12 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
               <ThemedText style={styles.buttonText}>View Only</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
+              style={[styles.button, styles.typeButton]}
+              onPress={handleWalletConnectSelect}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>WalletConnect</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.button, styles.typeButton, styles.disabledButton]}
               activeOpacity={0.8}>
               <ThemedText style={[styles.buttonText, styles.disabledText]}>Hito (Coming Soon)</ThemedText>
@@ -118,6 +145,16 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
               style={[styles.button, styles.typeButton, styles.disabledButton]}
               activeOpacity={0.8}>
               <ThemedText style={[styles.buttonText, styles.disabledText]}>Lattice1 (Coming Soon)</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.typeButton, styles.disabledButton]}
+              activeOpacity={0.8}>
+              <ThemedText style={[styles.buttonText, styles.disabledText]}>Ledger (Coming Soon)</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.typeButton, styles.disabledButton]}
+              activeOpacity={0.8}>
+              <ThemedText style={[styles.buttonText, styles.disabledText]}>Private Key (Coming Soon)</ThemedText>
             </TouchableOpacity>
           </>
         ) : (
@@ -135,7 +172,7 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
               style={[styles.button, styles.connectButton]}
               onPress={handleConnect}
               activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>Connect Key</ThemedText>
+              <ThemedText style={styles.buttonText}>Connect</ThemedText>
             </TouchableOpacity>
           </View>
         )}

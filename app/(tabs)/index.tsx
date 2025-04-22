@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { WalletTypeSheet } from '@/components/WalletTypeSheet';
-import { addWallet, getWallets, type Wallet } from '@/utils/walletStorage';
+import { addWallet, getWallets, deleteWallet, type Wallet } from '@/utils/walletStorage';
+import { useAccount } from 'wagmi';
 
 export default function HomeScreen() {
   const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    loadWallets();
-  }, []);
+  const { address } = useAccount();
 
   const loadWallets = async () => {
     const savedWallets = await getWallets();
@@ -25,18 +24,39 @@ export default function HomeScreen() {
     await loadWallets();
   };
 
+  useEffect(() => {
+    if (!address) return;
+    handleAddWallet({
+      type: 'wallet-connect',
+      address,
+    })
+  }, [address]);
+
+  const handleDeleteWallet = async (wallet: Wallet) => {
+    await deleteWallet(wallet);
+    await loadWallets();
+  };
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <ThemedText type="title" style={styles.title}>Wallets</ThemedText>
       
       {wallets.map((wallet, index) => (
         <ThemedView key={index} style={styles.walletCard}>
-          <ThemedText style={styles.walletType}>
-            {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
-          </ThemedText>
-          <ThemedText style={styles.walletAddress}>
-            {wallet.address}
-          </ThemedText>
+          <View style={styles.walletInfo}>
+            <ThemedText style={styles.walletType}>
+              {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
+            </ThemedText>
+            <ThemedText style={styles.walletAddress}>
+              {wallet.address}
+            </ThemedText>
+          </View>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteWallet(wallet)}
+            activeOpacity={0.8}>
+            <ThemedText style={styles.deleteButtonText}>✕</ThemedText>
+          </TouchableOpacity>
         </ThemedView>
       ))}
       
@@ -70,6 +90,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  walletInfo: {
+    flex: 1,
   },
   walletType: {
     fontSize: 16,
@@ -79,6 +104,21 @@ const styles = StyleSheet.create({
   walletAddress: {
     fontSize: 14,
     opacity: 0.7,
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(220,53,69,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    color: '#dc3545',
+    fontSize: 16,
+    lineHeight: 20,
   },
   connectButton: {
     backgroundColor: '#0a7ea4',
