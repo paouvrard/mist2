@@ -8,6 +8,7 @@ import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
 import { WelcomePage } from '@/components/WelcomePage';
 import SignatureRequestSheet from '@/components/SignatureRequestSheet';
+import TransactionRequestSheet from '@/components/TransactionRequestSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
@@ -24,7 +25,9 @@ export default function BrowserScreen() {
   const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
   const [isWalletInfoSheetVisible, setIsWalletInfoSheetVisible] = useState(false);
   const [isSignatureSheetVisible, setIsSignatureSheetVisible] = useState(false);
+  const [isTransactionSheetVisible, setIsTransactionSheetVisible] = useState(false);
   const [signatureMessage, setSignatureMessage] = useState('');
+  const [transactionDetails, setTransactionDetails] = useState<Record<string, any>>({});
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -113,6 +116,19 @@ export default function BrowserScreen() {
     setPendingRequestId(null);
   }, [pendingRequestId]);
 
+  const handleTransactionClose = useCallback(() => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          error: { code: 4001, message: 'User rejected the request.' }
+        });
+      `);
+    }
+    setIsTransactionSheetVisible(false);
+    setPendingRequestId(null);
+  }, [pendingRequestId]);
+
   const decodeHexMessage = (hexMessage: string): string => {
     try {
       // Remove '0x' prefix if present
@@ -128,6 +144,31 @@ export default function BrowserScreen() {
   const handleMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+
+      // Handle console messages
+      if (data.type === 'console') {
+        const args = data.data.map((arg: any) => 
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+        );
+        
+        switch (data.method) {
+          case 'log':
+            console.log('[WebView]', ...args);
+            break;
+          case 'warn':
+            console.warn('[WebView]', ...args);
+            break;
+          case 'error':
+            console.error('[WebView]', ...args);
+            break;
+          case 'info':
+            console.info('[WebView]', ...args);
+            break;
+        }
+        return;
+      }
+
+      // Handle ethereum requests
       if (data.type === 'ethereum_request') {
         switch (data.payload.method) {
           case 'eth_requestAccounts':
@@ -158,6 +199,21 @@ export default function BrowserScreen() {
             setSignatureMessage(decodedMessage);
             setPendingRequestId(data.id);
             setIsSignatureSheetVisible(true);
+            break;
+
+          case 'eth_sendTransaction':
+            if (!isConnected || !connectedAddress) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4100, message: 'Not connected' }
+                });
+              `);
+              break;
+            }
+            setTransactionDetails(data.payload.params[0]);
+            setPendingRequestId(data.id);
+            setIsTransactionSheetVisible(true);
             break;
 
           case 'eth_chainId':
@@ -321,6 +377,12 @@ export default function BrowserScreen() {
         message={signatureMessage}
         address={connectedAddress ?? ''}
         onClose={handleSignatureClose}
+      />
+      <TransactionRequestSheet
+        isVisible={isTransactionSheetVisible}
+        transaction={transactionDetails}
+        address={connectedAddress ?? ''}
+        onClose={handleTransactionClose}
       />
     </View>
   );

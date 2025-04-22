@@ -34,6 +34,67 @@ interface EthereumEvents {
 export const getEthereumProvider = (): string => {
   return `
     (function() {
+      // Console logging bridge
+      const originalConsole = window.console;
+      window.console = {
+        log: (...args) => {
+          originalConsole.log(...args);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            method: 'log',
+            data: args
+          }));
+        },
+        warn: (...args) => {
+          originalConsole.warn(...args);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            method: 'warn',
+            data: args
+          }));
+        },
+        error: (...args) => {
+          originalConsole.error(...args);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            method: 'error',
+            data: args
+          }));
+        },
+        info: (...args) => {
+          originalConsole.info(...args);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            method: 'info',
+            data: args
+          }));
+        },
+      };
+
+      // Catch unhandled errors and promise rejections
+      window.onerror = (message, source, lineno, colno, error) => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'console',
+          method: 'error',
+          data: [{
+            message,
+            source,
+            lineno,
+            colno,
+            error: error?.stack || error?.message || error
+          }]
+        }));
+        return false;
+      };
+
+      window.onunhandledrejection = (event) => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'console',
+          method: 'error',
+          data: ['Unhandled Promise Rejection:', event.reason]
+        }));
+      };
+
       const providerInfo = {
         uuid: 'mist2-mobile-' + Math.random().toString(36).slice(2),
         name: 'Mist2 Mobile',
@@ -66,6 +127,37 @@ export const getEthereumProvider = (): string => {
               if (!this._connected) {
                 return reject(new Error('Not connected'));
               }
+            }
+
+            // For eth_sendTransaction, validate parameters
+            if (request.method === 'eth_sendTransaction') {
+              if (!request.params || request.params.length < 1) {
+                return reject(new Error('eth_sendTransaction requires transaction parameters'));
+              }
+              if (!this._connected) {
+                return reject(new Error('Not connected'));
+              }
+              const tx = request.params[0];
+              if (!tx.to) {
+                return reject(new Error('Transaction requires a to address'));
+              }
+            }
+
+            // For eth_blockNumber, handle it directly
+            if (request.method === 'eth_blockNumber') {
+              return resolve('0x1234567'); // Mock block number for now
+            }
+
+            // For eth_estimateGas, handle it directly
+            if (request.method === 'eth_estimateGas') {
+              if (!request.params || request.params.length < 1) {
+                return reject(new Error('eth_estimateGas requires transaction parameters'));
+              }
+              // Return a mock gas estimate (21000 is the base cost for a simple ETH transfer)
+              const tx = request.params[0];
+              // If there's data, return a higher estimate since it's likely a contract interaction
+              const estimate = tx.data ? '0x1D4C0' : '0x5208'; // 120,000 : 21,000
+              return resolve(estimate);
             }
             
             this._callbacks[id] = { resolve, reject };
