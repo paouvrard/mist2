@@ -57,6 +57,16 @@ export const getEthereumProvider = (): string => {
                 return resolve([this._address]);
               }
             }
+
+            // For personal_sign, validate parameters
+            if (request.method === 'personal_sign') {
+              if (!request.params || request.params.length < 2) {
+                return reject(new Error('personal_sign requires message and address parameters'));
+              }
+              if (!this._connected) {
+                return reject(new Error('Not connected'));
+              }
+            }
             
             this._callbacks[id] = { resolve, reject };
             window.ReactNativeWebView.postMessage(JSON.stringify({

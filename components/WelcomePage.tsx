@@ -17,6 +17,7 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     { name: 'Uniswap', url: 'https://app.uniswap.org' },
     { name: 'Aave', url: 'https://app.aave.com' },
     { name: 'Rainbow Bridge', url: 'https://rainbowbridge.app' },
+    { name: 'Rarible', url: 'https://rarible.com' },
   ];
 
   return (

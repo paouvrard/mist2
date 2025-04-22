@@ -7,9 +7,11 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
 import { WelcomePage } from '@/components/WelcomePage';
+import SignatureRequestSheet from '@/components/SignatureRequestSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
+import { Buffer } from 'buffer';
 
 // Get the provider injection code
 const INJECT_PROVIDER_JS = getEthereumProvider();
@@ -21,6 +23,8 @@ export default function BrowserScreen() {
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
   const [isWalletInfoSheetVisible, setIsWalletInfoSheetVisible] = useState(false);
+  const [isSignatureSheetVisible, setIsSignatureSheetVisible] = useState(false);
+  const [signatureMessage, setSignatureMessage] = useState('');
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -96,6 +100,31 @@ export default function BrowserScreen() {
     }
   }, []);
 
+  const handleSignatureClose = useCallback(() => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          error: { code: 4001, message: 'User rejected the request.' }
+        });
+      `);
+    }
+    setIsSignatureSheetVisible(false);
+    setPendingRequestId(null);
+  }, [pendingRequestId]);
+
+  const decodeHexMessage = (hexMessage: string): string => {
+    try {
+      // Remove '0x' prefix if present
+      const cleanHex = hexMessage.startsWith('0x') ? hexMessage.slice(2) : hexMessage;
+      // Try to decode as UTF-8 string
+      return Buffer.from(cleanHex, 'hex').toString('utf8');
+    } catch (error) {
+      // If decoding fails, return the original message
+      return hexMessage;
+    }
+  };
+
   const handleMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -114,7 +143,23 @@ export default function BrowserScreen() {
               `);
             }
             break;
-            
+
+          case 'personal_sign':
+            if (!isConnected || !connectedAddress) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4100, message: 'Not connected' }
+                });
+              `);
+              break;
+            }
+            const decodedMessage = decodeHexMessage(data.payload.params[0]);
+            setSignatureMessage(decodedMessage);
+            setPendingRequestId(data.id);
+            setIsSignatureSheetVisible(true);
+            break;
+
           case 'eth_chainId':
             if (webViewRef.current) {
               webViewRef.current.injectJavaScript(`
@@ -125,7 +170,7 @@ export default function BrowserScreen() {
               `);
             }
             break;
-            
+
           case 'net_version':
             if (webViewRef.current) {
               webViewRef.current.injectJavaScript(`
@@ -158,7 +203,7 @@ export default function BrowserScreen() {
               `);
             }
             break;
-            
+
           default:
             if (webViewRef.current) {
               webViewRef.current.injectJavaScript(`
@@ -270,6 +315,12 @@ export default function BrowserScreen() {
         onDisconnect={handleDisconnect}
         onSwitchWallet={handleSwitchWallet}
         walletAddress={connectedAddress ?? ''}
+      />
+      <SignatureRequestSheet
+        isVisible={isSignatureSheetVisible}
+        message={signatureMessage}
+        address={connectedAddress ?? ''}
+        onClose={handleSignatureClose}
       />
     </View>
   );
