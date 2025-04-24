@@ -12,7 +12,7 @@ export default function HomeScreen() {
   const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
 
   const loadWallets = async () => {
     const savedWallets = await getWallets();
@@ -23,6 +23,11 @@ export default function HomeScreen() {
     await addWallet(wallet);
     await loadWallets();
   };
+
+  // Load wallets when the component mounts
+  useEffect(() => {
+    loadWallets();
+  }, []);
 
   useEffect(() => {
     if (!address) return;
@@ -37,6 +42,10 @@ export default function HomeScreen() {
     await loadWallets();
   };
 
+  const isWalletConnected = (wallet: Wallet) => {
+    return isConnected && wallet.type === 'wallet-connect' && wallet.address.toLowerCase() === address?.toLowerCase();
+  };
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <ThemedText type="title" style={styles.title}>Wallets</ThemedText>
@@ -44,9 +53,14 @@ export default function HomeScreen() {
       {wallets.map((wallet, index) => (
         <ThemedView key={index} style={styles.walletCard}>
           <View style={styles.walletInfo}>
-            <ThemedText style={styles.walletType}>
-              {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
-            </ThemedText>
+            <View style={styles.walletTypeContainer}>
+              <ThemedText style={styles.walletType}>
+                {wallet.type}
+              </ThemedText>
+              {isWalletConnected(wallet) && (
+                <View style={styles.connectionDot} />
+              )}
+            </View>
             <ThemedText style={styles.walletAddress}>
               {wallet.address}
             </ThemedText>
@@ -96,10 +110,21 @@ const styles = StyleSheet.create({
   walletInfo: {
     flex: 1,
   },
+  walletTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   walletType: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginRight: 8,
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#28a745',
   },
   walletAddress: {
     fontSize: 14,
