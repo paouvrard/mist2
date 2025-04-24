@@ -19,7 +19,7 @@ interface Props {
   onClose: () => void;
   onDisconnect: () => void;
   onSwitchWallet: (wallet: Wallet) => void;
-  walletAddress: string;
+  wallet: Wallet;
 }
 
 const SPRING_CONFIG = {
@@ -27,7 +27,7 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWallet, walletAddress }: Props) {
+export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWallet, wallet }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
@@ -93,24 +93,24 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
         </ThemedText>
         
         <ScrollView style={styles.walletList}>
-          {wallets.map((wallet, index) => (
+          {wallets.map((walletItem, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.walletOption,
-                wallet.address === walletAddress && styles.selectedWallet,
+                walletItem.address === wallet.address && styles.selectedWallet,
               ]}
               onPress={() => {
-                if (wallet.address !== walletAddress) {
-                  onSwitchWallet(wallet);
+                if (walletItem.address !== wallet.address) {
+                  onSwitchWallet(walletItem);
                 }
               }}
               activeOpacity={0.8}>
               <ThemedText style={styles.walletType}>
-                {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
+                {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
               </ThemedText>
               <ThemedText style={styles.walletAddress}>
-                {wallet.address}
+                {walletItem.address}
               </ThemedText>
             </TouchableOpacity>
           ))}

@@ -7,12 +7,15 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
 import { WelcomePage } from '@/components/WelcomePage';
-import SignatureRequestSheet from '@/components/SignatureRequestSheet';
-import TransactionRequestSheet from '@/components/TransactionRequestSheet';
+import { SignatureRequestSheet } from '@/components/SignatureRequestSheet';
+import { TransactionRequestSheet } from '@/components/TransactionRequestSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
 import { Buffer } from 'buffer';
+import { Transaction } from 'viem';
+import { getRpcUrl } from '@/utils/chains';
+import { Wallet } from '@/utils/walletStorage';
 
 // Get the provider injection code
 const INJECT_PROVIDER_JS = getEthereumProvider();
@@ -21,16 +24,17 @@ export default function BrowserScreen() {
   const [url, setUrl] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
+  const [connectedWallet, setConnectedWallet] = useState<Wallet | null>(null);
   const [isWalletSheetVisible, setIsWalletSheetVisible] = useState(false);
   const [isWalletInfoSheetVisible, setIsWalletInfoSheetVisible] = useState(false);
   const [isSignatureSheetVisible, setIsSignatureSheetVisible] = useState(false);
   const [isTransactionSheetVisible, setIsTransactionSheetVisible] = useState(false);
   const [signatureMessage, setSignatureMessage] = useState('');
-  const [transactionDetails, setTransactionDetails] = useState<Record<string, any>>({});
+  const [transactionDetails, setTransactionDetails] = useState<Transaction>({} as Transaction);
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [currentChainId, setCurrentChainId] = useState<number>(1); // Default to Ethereum mainnet
   const webViewRef = useRef<WebView>(null);
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
   const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
@@ -49,10 +53,10 @@ export default function BrowserScreen() {
     setIsWalletSheetVisible(true);
   }, []);
 
-  const handleConnectConfirm = useCallback((wallet: { address: string }) => {
+  const handleConnectConfirm = useCallback((wallet: Wallet) => {
     if (pendingRequestId !== null && webViewRef.current) {
       setIsConnected(true);
-      setConnectedAddress(wallet.address);
+      setConnectedWallet(wallet);
       webViewRef.current.injectJavaScript(`
         window.ethereum._resolveRequest({
           id: ${pendingRequestId},
@@ -80,7 +84,7 @@ export default function BrowserScreen() {
 
   const handleDisconnect = useCallback(() => {
     setIsConnected(false);
-    setConnectedAddress(null);
+    setConnectedWallet(null);
     setIsWalletInfoSheetVisible(false);
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
@@ -92,8 +96,8 @@ export default function BrowserScreen() {
     }
   }, []);
 
-  const handleSwitchWallet = useCallback((wallet: { address: string }) => {
-    setConnectedAddress(wallet.address);
+  const handleSwitchWallet = useCallback((wallet: Wallet) => {
+    setConnectedWallet(wallet);
     setIsWalletInfoSheetVisible(false);
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
@@ -102,6 +106,18 @@ export default function BrowserScreen() {
       `);
     }
   }, []);
+
+  const handleSignatureSuccess = useCallback((signature: string) => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          result: '${signature}'
+        });
+      `);
+      setPendingRequestId(null);
+    }
+  }, [pendingRequestId]);
 
   const handleSignatureClose = useCallback(() => {
     if (pendingRequestId !== null && webViewRef.current) {
@@ -114,6 +130,18 @@ export default function BrowserScreen() {
     }
     setIsSignatureSheetVisible(false);
     setPendingRequestId(null);
+  }, [pendingRequestId]);
+
+  const handleTransactionSuccess = useCallback((hash: string) => {
+    if (pendingRequestId !== null && webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.ethereum._resolveRequest({
+          id: ${pendingRequestId},
+          result: '${hash}'
+        });
+      `);
+      setPendingRequestId(null);
+    }
   }, [pendingRequestId]);
 
   const handleTransactionClose = useCallback(() => {
@@ -144,7 +172,6 @@ export default function BrowserScreen() {
   const handleMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-
       // Handle console messages
       if (data.type === 'console') {
         const args = data.data.map((arg: any) => 
@@ -174,19 +201,29 @@ export default function BrowserScreen() {
           case 'eth_requestAccounts':
             if (!isConnected) {
               handleConnect(data.payload, data.id);
-            } else if (connectedAddress && webViewRef.current) {
+            } else if (connectedWallet && webViewRef.current) {
               webViewRef.current.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
                   type: 'eth_requestAccounts',
-                  result: ['${connectedAddress}']
+                  result: ['${connectedWallet.address}']
                 });
               `);
             }
             break;
 
           case 'personal_sign':
-            if (!isConnected || !connectedAddress) {
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 2) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'personal_sign requires message and address parameters' }
+                });
+              `);
+              break;
+            }
+            if (!isConnected || !connectedWallet) {
               webViewRef.current?.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
@@ -202,7 +239,17 @@ export default function BrowserScreen() {
             break;
 
           case 'eth_sendTransaction':
-            if (!isConnected || !connectedAddress) {
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'eth_sendTransaction requires transaction parameters' }
+                });
+              `);
+              break;
+            }
+            if (!isConnected || !connectedWallet) {
               webViewRef.current?.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
@@ -221,7 +268,7 @@ export default function BrowserScreen() {
               webViewRef.current.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
-                  result: '0x1'
+                  result: '0x${currentChainId.toString(16)}'
                 });
               `);
             }
@@ -232,7 +279,7 @@ export default function BrowserScreen() {
               webViewRef.current.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
-                  result: '1'
+                  result: '${currentChainId.toString()}'
                 });
               `);
             }
@@ -243,13 +290,164 @@ export default function BrowserScreen() {
               webViewRef.current.injectJavaScript(`
                 window.ethereum._resolveRequest({
                   id: ${data.id},
-                  result: ${isConnected && connectedAddress ? `['${connectedAddress}']` : '[]'}
+                  result: ${isConnected && connectedWallet ? `['${connectedWallet.address}']` : '[]'}
                 });
               `);
             }
             break;
 
+          case 'eth_blockNumber':
+            // Use direct RPC call from React Native side instead of makeRpcCall in WebView
+            if (webViewRef.current) {
+              // Fetch from RPC using the current chain's RPC URL
+              fetch(getRpcUrl(currentChainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_blockNumber',
+                  params: []
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (webViewRef.current) {
+                  if (responseJson.error) {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (webViewRef.current) {
+                  webViewRef.current.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+
+          case 'eth_estimateGas':
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'eth_estimateGas requires transaction parameters' }
+                });
+              `);
+              break;
+            }
+            // Use direct RPC call from React Native side instead of makeRpcCall in WebView
+            if (webViewRef.current) {
+              // Fetch from RPC using the current chain's RPC URL
+              fetch(getRpcUrl(currentChainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_estimateGas',
+                  params: data.payload.params
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (webViewRef.current) {
+                  if (responseJson.error) {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (webViewRef.current) {
+                  webViewRef.current.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+
           case 'wallet_switchEthereumChain':
+            // Validate parameters
+            if (!data.payload.params || !data.payload.params[0] || !data.payload.params[0].chainId) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'wallet_switchEthereumChain requires chainId parameter' }
+                });
+              `);
+              break;
+            }
+            
+            // Handle chain switch
+            if (webViewRef.current) {
+              const newChainId = parseInt(data.payload.params[0].chainId, 16);
+              setCurrentChainId(newChainId);
+              webViewRef.current.injectJavaScript(`
+                (function() {
+                  const origin = window.location.origin;
+                  window.ethereum._chainStates[origin] = { chainId: '${data.payload.params[0].chainId}' };
+                  window.ethereum._chainId = '${data.payload.params[0].chainId}';
+                  window.ethereum._emitEvent('chainChanged', '${data.payload.params[0].chainId}');
+                  window.ethereum._resolveRequest({
+                    id: ${data.id},
+                    result: null
+                  });
+                })();
+              `);
+            }
+            break;
+
+          case 'wallet_addEthereumChain':
+            // Validate parameters
+            if (!data.payload.params || !data.payload.params[0] || !data.payload.params[0].chainId) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'wallet_addEthereumChain requires chain information' }
+                });
+              `);
+              break;
+            }
+
+            // For now we'll just return success but we could implement adding new chains
             if (webViewRef.current) {
               webViewRef.current.injectJavaScript(`
                 window.ethereum._resolveRequest({
@@ -257,6 +455,64 @@ export default function BrowserScreen() {
                   result: null
                 });
               `);
+            }
+            break;
+            
+          case 'eth_getTransactionByHash':
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              webViewRef.current?.injectJavaScript(`
+                window.ethereum._resolveRequest({
+                  id: ${data.id},
+                  error: { code: 4200, message: 'eth_getTransactionByHash requires transaction hash parameter' }
+                });
+              `);
+              break;
+            }
+            // Use direct RPC call from React Native side using the correct chain RPC URL
+            if (webViewRef.current) {
+              fetch(getRpcUrl(currentChainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_getTransactionByHash',
+                  params: data.payload.params
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (webViewRef.current) {
+                  if (responseJson.error) {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    webViewRef.current.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (webViewRef.current) {
+                  webViewRef.current.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
             }
             break;
 
@@ -277,7 +533,7 @@ export default function BrowserScreen() {
     } catch (error) {
       console.error('Error handling message:', error);
     }
-  }, [isConnected, connectedAddress, handleConnect]);
+  }, [isConnected, connectedWallet, currentChainId, handleConnect]);
 
   const goToUrl = (input: string) => {
     let processedUrl = input;
@@ -370,19 +626,23 @@ export default function BrowserScreen() {
         onClose={() => setIsWalletInfoSheetVisible(false)}
         onDisconnect={handleDisconnect}
         onSwitchWallet={handleSwitchWallet}
-        walletAddress={connectedAddress ?? ''}
+        wallet={connectedWallet ?? {} as Wallet}
       />
       <SignatureRequestSheet
         isVisible={isSignatureSheetVisible}
         message={signatureMessage}
-        address={connectedAddress ?? ''}
+        currentWallet={connectedWallet}
+        currentChainId={currentChainId}
         onClose={handleSignatureClose}
+        onSuccess={handleSignatureSuccess}
       />
       <TransactionRequestSheet
         isVisible={isTransactionSheetVisible}
         transaction={transactionDetails}
-        address={connectedAddress ?? ''}
+        currentWallet={connectedWallet}
+        currentChainId={currentChainId}
         onClose={handleTransactionClose}
+        onSuccess={handleTransactionSuccess}
       />
     </View>
   );

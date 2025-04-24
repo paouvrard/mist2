@@ -6,11 +6,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import '@walletconnect/react-native-compat';
 import { WagmiProvider } from "wagmi";
-import { mainnet } from "@wagmi/core/chains";
+import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit, defaultWagmiConfig, AppKit } from "@reown/appkit-wagmi-react-native";
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { chains } from '@/utils/chains';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -18,7 +19,6 @@ SplashScreen.preventAutoHideAsync();
 // Create QueryClient instance
 const queryClient = new QueryClient();
 
-// Configure Reown
 const projectId = "2fda7efba5aabbe382ae748b14903bbe"; // Replace with your project ID from cloud.reown.com
 const metadata = {
   name: "Mist2",
@@ -31,8 +31,7 @@ const metadata = {
   }
 };
 
-const chains = [mainnet] as const;
-const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
+export const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
 
 // Create AppKit instance
 createAppKit({
@@ -40,6 +39,9 @@ createAppKit({
   wagmiConfig,
   defaultChain: mainnet,
   enableAnalytics: true,
+  features: {
+    swaps: false,
+  }
 });
 
 export default function RootLayout() {

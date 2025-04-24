@@ -28,6 +28,8 @@ interface EthereumEvents {
   [key: string]: ((data: any) => void)[];
 }
 
+const INFURA_ID = '8245495f0d1247d18e83e5f491b75c88'
+
 /**
  * Returns the JavaScript code that injects the Ethereum provider into the WebView
  */
@@ -35,7 +37,6 @@ export const getEthereumProvider = (): string => {
   return `
     (function() {
       // Console logging bridge
-      /*
       const originalConsole = window.console;
       window.console = {
         log: (...args) => {
@@ -87,7 +88,6 @@ export const getEthereumProvider = (): string => {
         }));
         return false;
       };
-      */
 
       window.onunhandledrejection = (event) => {
         window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -96,142 +96,6 @@ export const getEthereumProvider = (): string => {
           data: ['Unhandled Promise Rejection:', event.reason]
         }));
       };
-
-      // Chain configurations
-      const chains = {
-        '0x1': {
-          chainId: '0x1',
-          chainName: 'Ethereum Mainnet',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.infura.io/v3/'],
-          blockExplorerUrls: ['https://etherscan.io']
-        },
-        '0x5': {
-          chainId: '0x5',
-          chainName: 'Goerli',
-          nativeCurrency: {
-            name: 'Goerli Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://goerli.infura.io/v3/'],
-          blockExplorerUrls: ['https://goerli.etherscan.io']
-        },
-        '0x89': {
-          chainId: '0x89',
-          chainName: 'Polygon',
-          nativeCurrency: {
-            name: 'MATIC',
-            symbol: 'MATIC',
-            decimals: 18
-          },
-          rpcUrls: ['https://polygon-rpc.com'],
-          blockExplorerUrls: ['https://polygonscan.com']
-        },
-        '0xa': {
-          chainId: '0xa',
-          chainName: 'Optimism',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.optimism.io'],
-          blockExplorerUrls: ['https://optimistic.etherscan.io']
-        },
-        '0xa4b1': {
-          chainId: '0xa4b1',
-          chainName: 'Arbitrum One',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://arb1.arbitrum.io/rpc'],
-          blockExplorerUrls: ['https://arbiscan.io']
-        },
-        '0x64': {
-          chainId: '0x64',
-          chainName: 'Gnosis Chain',
-          nativeCurrency: {
-            name: 'xDAI',
-            symbol: 'xDAI',
-            decimals: 18
-          },
-          rpcUrls: ['https://rpc.gnosischain.com'],
-          blockExplorerUrls: ['https://gnosisscan.io']
-        },
-        '0x2105': {
-          chainId: '0x2105',
-          chainName: 'Base',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.base.org'],
-          blockExplorerUrls: ['https://basescan.org']
-        },
-        '0x4e454152': {
-          chainId: '0x4e454152',
-          chainName: 'Aurora',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.aurora.dev'],
-          blockExplorerUrls: ['https://aurorascan.dev']
-        },
-        '0x118': {
-          chainId: '0x118',
-          chainName: 'ZkSync Era',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.era.zksync.io'],
-          blockExplorerUrls: ['https://explorer.zksync.io']
-        }
-      };
-
-      // Helper function to make JSON-RPC calls
-      async function makeRpcCall(chainId, method, params = []) {
-        const chain = chains[chainId];
-        if (!chain || !chain.rpcUrls || chain.rpcUrls.length === 0) {
-          throw new Error('No RPC URL available for chain ' + chainId);
-        }
-
-        const rpcUrl = chain.rpcUrls[0];
-        const response = await fetch(rpcUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: Math.floor(Math.random() * 1000000),
-            method: method,
-            params: params
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('RPC request failed: ' + response.statusText);
-        }
-
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error.message || 'RPC error');
-        }
-
-        return data.result;
-      }
 
       const providerInfo = {
         uuid: 'mist2-mobile-' + Math.random().toString(36).slice(2),
@@ -265,103 +129,7 @@ export const getEthereumProvider = (): string => {
                 return resolve([this._address]);
               }
             }
-
-            // For personal_sign, validate parameters
-            if (request.method === 'personal_sign') {
-              if (!request.params || request.params.length < 2) {
-                return reject(new Error('personal_sign requires message and address parameters'));
-              }
-              if (!this._connected) {
-                return reject(new Error('Not connected'));
-              }
-            }
-
-            // For eth_sendTransaction, validate parameters
-            if (request.method === 'eth_sendTransaction') {
-              if (!request.params || request.params.length < 1) {
-                return reject(new Error('eth_sendTransaction requires transaction parameters'));
-              }
-              if (!this._connected) {
-                return reject(new Error('Not connected'));
-              }
-              const tx = request.params[0];
-              if (!tx.to) {
-                return reject(new Error('Transaction requires a to address'));
-              }
-            }
-
-            // For eth_chainId, return current chain
-            if (request.method === 'eth_chainId') {
-              return resolve(this._chainId);
-            }
-
-            // For net_version, return numeric chain ID
-            if (request.method === 'net_version') {
-              return resolve(parseInt(this._chainId).toString());
-            }
-
-            // For eth_blockNumber, make RPC call
-            if (request.method === 'eth_blockNumber') {
-              makeRpcCall(this._chainId, 'eth_blockNumber')
-                .then(resolve)
-                .catch(reject);
-              return;
-            }
-
-            // For eth_estimateGas, make RPC call
-            if (request.method === 'eth_estimateGas') {
-              if (!request.params || request.params.length < 1) {
-                return reject(new Error('eth_estimateGas requires transaction parameters'));
-              }
-              makeRpcCall(this._chainId, 'eth_estimateGas', request.params)
-                .then(resolve)
-                .catch(reject);
-              return;
-            }
-
-            // For wallet_switchEthereumChain
-            if (request.method === 'wallet_switchEthereumChain') {
-              if (!request.params || !request.params[0] || !request.params[0].chainId) {
-                return reject(new Error('wallet_switchEthereumChain requires chainId parameter'));
-              }
-              
-              const newChainId = request.params[0].chainId;
-              if (!chains[newChainId]) {
-                return reject(new Error('Unsupported chain ID'));
-              }
-
-              // Test RPC endpoint before switching
-              makeRpcCall(newChainId, 'eth_blockNumber')
-                .then(() => {
-                  // RPC is working, proceed with chain switch
-                  const origin = window.location.origin;
-                  this._chainStates[origin] = { chainId: newChainId };
-                  this._chainId = newChainId;
-                  this._emitEvent('chainChanged', newChainId);
-                  resolve(null);
-                })
-                .catch((error) => {
-                  reject(new Error('Failed to connect to RPC endpoint: ' + error.message));
-                });
-              return;
-            }
-
-            // For wallet_addEthereumChain
-            if (request.method === 'wallet_addEthereumChain') {
-              if (!request.params || !request.params[0] || !request.params[0].chainId) {
-                return reject(new Error('wallet_addEthereumChain requires chain information'));
-              }
-
-              const chainInfo = request.params[0];
-              if (chains[chainInfo.chainId]) {
-                // Chain already supported
-                return resolve(null);
-              }
-
-              // Reject unsupported chains for now
-              return reject(new Error('Chain not supported'));
-            }
-            
+            // Send request to native side
             this._callbacks[id] = { resolve, reject };
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'ethereum_request',

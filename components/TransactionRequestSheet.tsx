@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -8,16 +8,24 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sendTransaction, switchChain } from '@wagmi/core';
+import { useAccount } from 'wagmi';
+import { useAppKit } from '@reown/appkit-wagmi-react-native';
+import type { Transaction } from 'viem';
 
-import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
+import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Wallet } from '@/utils/walletStorage';
+import { wagmiConfig } from '@/app/_layout';
 
-interface TransactionRequestSheetProps {
-  transaction: Record<string, any>;
-  address: string;
+interface Props {
   isVisible: boolean;
-  onClose?: () => void;
+  onClose: () => void;
+  onSuccess?: (hash: string) => void;
+  transaction: Transaction;
+  currentWallet: Wallet | null;
+  currentChainId: number;
 }
 
 const SPRING_CONFIG = {
@@ -25,17 +33,23 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export default function TransactionRequestSheet({ 
+export function TransactionRequestSheet({ 
+  isVisible, 
+  onClose, 
+  onSuccess,
   transaction, 
-  address,
-  isVisible,
-  onClose 
-}: TransactionRequestSheetProps) {
+  currentWallet,
+  currentChainId,
+}: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
+  const { open } = useAppKit();
+  const { address } = useAccount();
 
   useEffect(() => {
     if (isVisible) {
@@ -46,11 +60,53 @@ export default function TransactionRequestSheet({
       opacity.value = withTiming(0, undefined, (finished) => {
         if (finished) {
           runOnJS(setIsRendered)(false);
+          runOnJS(setError)(null);
+          runOnJS(setIsLoading)(false);
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
     }
   }, [isVisible]);
+
+  const handleApprove = async () => {
+    if (!currentWallet) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await switchChain(wagmiConfig, { chainId: currentChainId });
+      // Send the transaction
+      const hash = await sendTransaction(wagmiConfig, transaction);
+      
+      // Call onSuccess with the transaction hash before closing
+      if (onSuccess) {
+        onSuccess(hash);
+      }
+      
+      onClose();
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to send transaction');
+      } else {
+        setError('Failed to send transaction');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    try {
+      await open();
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to open WalletConnect');
+      } else {
+        setError('Failed to open WalletConnect');
+      }
+    }
+  };
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -63,6 +119,10 @@ export default function TransactionRequestSheet({
   if (!isRendered && !isVisible) {
     return null;
   }
+
+  const isViewOnly = currentWallet?.type === 'view-only';
+  const isWalletConnect = currentWallet?.type === 'wallet-connect';
+  const accountMatches = currentWallet?.address.toLowerCase() === address?.toLowerCase();
 
   return (
     <>
@@ -84,19 +144,93 @@ export default function TransactionRequestSheet({
           sheetStyle,
         ]}>
         <ThemedView style={styles.handle} />
-        <ThemedText type="title" style={styles.title}>Transaction Request</ThemedText>
-        
-        <View style={styles.content}>
-          <ThemedText style={styles.label}>From:</ThemedText>
-          <ThemedText style={styles.address}>{address}</ThemedText>
-          
-          <ThemedText style={styles.label}>Transaction Details:</ThemedText>
-          <ScrollView style={styles.detailsContainer}>
-            <ThemedText style={styles.details}>
-              {JSON.stringify(transaction, null, 2)}
-            </ThemedText>
-          </ScrollView>
+        <ThemedText type="title" style={styles.title}>
+          Transaction Request
+        </ThemedText>
+
+        <View style={styles.detailsContainer}>
+          {transaction.to && (
+            <View style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>To:</ThemedText>
+              <ThemedText style={styles.detailValue}>{transaction.to}</ThemedText>
+            </View>
+          )}
+          {transaction.value && (
+            <View style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>Value:</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {transaction.value.toString()} Wei
+              </ThemedText>
+            </View>
+          )}
+          {transaction.data && (
+            <View style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>Data:</ThemedText>
+              <ThemedText style={styles.detailValue}>{transaction.data}</ThemedText>
+            </View>
+          )}
         </View>
+
+        {error && (
+          <ThemedText style={styles.error}>{error}</ThemedText>
+        )}
+
+        {isViewOnly && (
+          <ThemedText style={styles.warning}>
+            View-only wallet cannot approve the request
+          </ThemedText>
+        )}
+
+        {isWalletConnect && !address && (
+          <>
+            <ThemedText style={styles.description}>
+              No wallet connected. Connect a wallet to approve this request.
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.button, styles.connectButton]}
+              onPress={handleConnect}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>Connect Wallet</ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {isWalletConnect && address && !accountMatches && (
+          <>
+            <ThemedText style={styles.description}>
+              The account is not connected, switch account from the wallet or reconnect
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.button, styles.connectButton]}
+              onPress={handleConnect}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>Reconnect</ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {isWalletConnect && accountMatches && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.approveButton,
+              (isLoading || isViewOnly) && styles.disabledButton,
+            ]}
+            onPress={handleApprove}
+            disabled={isLoading || isViewOnly}
+            activeOpacity={0.8}>
+            <ThemedText style={styles.buttonText}>
+              {isLoading ? 'Sending...' : 'Approve'}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[styles.button, styles.cancelButton]}
+          onPress={onClose}
+          activeOpacity={0.8}>
+          <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+        </TouchableOpacity>
       </Animated.View>
     </>
   );
@@ -133,28 +267,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  content: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  address: {
-    fontSize: 14,
-    fontFamily: 'SpaceMono-Regular',
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
+  description: {
+    textAlign: 'center',
+    marginBottom: 16,
+    opacity: 0.7,
   },
   detailsContainer: {
-    maxHeight: 300,
     backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
-    padding: 12,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  details: {
+  detailRow: {
+    marginBottom: 8,
+  },
+  detailLabel: {
     fontSize: 14,
-    fontFamily: 'SpaceMono-Regular',
+    opacity: 0.7,
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    opacity: 0.9,
+  },
+  warning: {
+    color: '#dc3545',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  error: {
+    color: '#dc3545',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  button: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  approveButton: {
+    backgroundColor: '#28a745',
+  },
+  connectButton: {
+    backgroundColor: '#0a7ea4',
+  },
+  cancelButton: {
+    backgroundColor: '#687076',
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
