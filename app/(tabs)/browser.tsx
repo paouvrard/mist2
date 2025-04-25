@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, TextInput, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -35,6 +35,7 @@ export default function BrowserScreen() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>(1); // Default to Ethereum mainnet
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
   const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
@@ -42,6 +43,23 @@ export default function BrowserScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigationBarHeight = 50; // Fixed height for the navigation bar
   const { setHideTabBar } = useTabVisibility();
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
 
   // Update tab visibility when showing/hiding welcome screen
   useEffect(() => {
@@ -564,10 +582,13 @@ export default function BrowserScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { backgroundColor }]}
+      keyboardVerticalOffset={insets.bottom}>
       <View style={[styles.webviewContainer, { 
         paddingTop: insets.top,
-        marginBottom: navigationBarHeight + tabBarHeight,
+        marginBottom: navigationBarHeight + (keyboardVisible ? 0 : tabBarHeight),
       }]}>
         {url && (
           <WebView
@@ -582,12 +603,13 @@ export default function BrowserScreen() {
             onMessage={handleMessage}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            keyboardDisplayRequiresUserAction={false}
           />
         )}
       </View>
       <View style={[styles.navigationBar, { 
-        bottom: tabBarHeight,
-        marginBottom: 6
+        bottom: keyboardVisible ? 0 : tabBarHeight,
+        marginBottom: keyboardVisible ? 0 : 6
       }]}>
         <TouchableOpacity 
           onPress={handleBackPress}
@@ -644,7 +666,7 @@ export default function BrowserScreen() {
         onClose={handleTransactionClose}
         onSuccess={handleTransactionSuccess}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

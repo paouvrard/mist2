@@ -9,6 +9,7 @@ import { WagmiProvider } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit, defaultWagmiConfig, AppKit } from "@reown/appkit-wagmi-react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { chains } from '@/utils/chains';
@@ -64,14 +65,25 @@ export default function RootLayout() {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+            keyboardVerticalOffset={0}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="auto" />
+          </KeyboardAvoidingView>
         </ThemeProvider>
         <AppKit />
       </QueryClientProvider>
     </WagmiProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  }
+});
