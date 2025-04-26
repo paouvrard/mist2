@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -12,14 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getWallets, type Wallet } from '@/utils/walletStorage';
+import { getWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
   onDisconnect: () => void;
   onSwitchWallet: (wallet: Wallet) => void;
-  wallet: Wallet;
+  wallet: Wallet | null;
 }
 
 const SPRING_CONFIG = {
@@ -92,36 +92,47 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
           Connected Wallet
         </ThemedText>
         
-        <ScrollView style={styles.walletList}>
-          {wallets.map((walletItem, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.walletOption,
-                walletItem.address === wallet.address && styles.selectedWallet,
-              ]}
-              onPress={() => {
-                if (walletItem.address !== wallet.address) {
-                  onSwitchWallet(walletItem);
-                }
-              }}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.walletType}>
-                {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
-              </ThemedText>
-              <ThemedText style={styles.walletAddress}>
-                {walletItem.address}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {wallet ? (
+          <>
+            <ScrollView style={styles.walletList}>
+              {wallets.map((walletItem, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.walletOption,
+                    (walletItem.address === wallet?.address && walletItem.type === wallet?.type) &&
+                      styles.selectedWallet,
+                  ]}
+                  onPress={() => {
+                    if (walletItem.type !== wallet?.type) {
+                      onSwitchWallet(walletItem);
+                    }
+                  }}
+                  activeOpacity={0.8}>
+                  <ThemedText style={styles.walletType}>
+                    {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
+                  </ThemedText>
+                  <ThemedText style={styles.walletAddress}>
+                    {truncateAddress(walletItem.address)}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-        <TouchableOpacity
-          style={[styles.button, styles.disconnectButton]}
-          onPress={onDisconnect}
-          activeOpacity={0.8}>
-          <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.disconnectButton]}
+              onPress={onDisconnect}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.noWalletContainer}>
+            <ThemedText style={styles.noWalletText}>
+              No wallet connected, connect wallet from the app.
+            </ThemedText>
+          </View>
+        )}
       </Animated.View>
     </>
   );
@@ -159,7 +170,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   walletList: {
-    maxHeight: 200,
+    maxHeight: 300, // Increased from 200 to show more wallets before scrolling
   },
   walletOption: {
     padding: 16,
@@ -193,5 +204,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  noWalletContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noWalletText: {
+    fontSize: 16,
+    textAlign: 'center',
+    opacity: 0.8,
   },
 });

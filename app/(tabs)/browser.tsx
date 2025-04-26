@@ -601,91 +601,94 @@ export default function BrowserScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
-      <View style={[styles.container, { backgroundColor }]}>
-        <View style={[styles.webviewContainer]}>
-          {url && (
-            <WebView
-              ref={webViewRef}
-              source={{ uri: url }}
-              style={styles.webview}
-              onNavigationStateChange={(navState) => {
-                setCurrentUrl(navState.url);
-                setCanGoBack(navState.canGoBack);
-              }}
-              injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
-              onMessage={handleMessage}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              keyboardDisplayRequiresUserAction={false}
-            />
-          )}
-        </View>
-
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'position' : undefined}
-          style={styles.navigationBarContainer} 
-          keyboardVerticalOffset={0}>
-          <View style={[styles.navigationBar, { backgroundColor: navBarBackgroundColor }]}>
-            <TouchableOpacity 
-              onPress={handleBackPress}
-              style={styles.button}>
-              <IconSymbol size={20} name="chevron.left" color={navBarTextColor} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleHomePress}
-              style={styles.button}>
-              <IconSymbol size={20} name="house.fill" color={navBarTextColor} />
-            </TouchableOpacity>
-            <TextInput
-              style={[styles.input, { color: navBarTextColor }]}
-              value={currentUrl}
-              onChangeText={setCurrentUrl}
-              onSubmitEditing={() => goToUrl(currentUrl)}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              returnKeyType="go"
-            />
-            <TouchableOpacity 
-              onPress={() => setIsWalletInfoSheetVisible(true)}
-              style={styles.button}>
-              <IconSymbol size={20} name="key.fill" color={navBarTextColor} />
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-
-        <WalletConnectSheet
-          isVisible={isWalletSheetVisible}
-          onClose={handleConnectCancel}
-          onConnect={handleConnectConfirm}
-          onCancel={handleConnectCancel}
-        />
-        <WalletInfoSheet
-          isVisible={isWalletInfoSheetVisible}
-          onClose={() => setIsWalletInfoSheetVisible(false)}
-          onDisconnect={handleDisconnect}
-          onSwitchWallet={handleSwitchWallet}
-          wallet={connectedWallet ?? {} as Wallet}
-        />
-        <SignatureRequestSheet
-          isVisible={isSignatureSheetVisible}
-          message={signatureMessage}
-          currentWallet={connectedWallet}
-          currentChainId={currentChainId}
-          onClose={handleSignatureClose}
-          onSuccess={handleSignatureSuccess}
-        />
-        <TransactionRequestSheet
-          isVisible={isTransactionSheetVisible}
-          transaction={transactionDetails}
-          currentWallet={connectedWallet}
-          currentChainId={currentChainId}
-          onClose={handleTransactionClose}
-          onSuccess={handleTransactionSuccess}
-        />
+    <View style={[styles.container, { backgroundColor }]}>
+      <View style={[
+        styles.webviewContainer, 
+        { paddingTop: insets.top }
+      ]}>
+        {url && (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: url }}
+            style={styles.webview}
+            onNavigationStateChange={(navState) => {
+              setCurrentUrl(navState.url);
+              setCanGoBack(navState.canGoBack);
+            }}
+            injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
+            onMessage={handleMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            keyboardDisplayRequiresUserAction={false}
+            contentInsetAdjustmentBehavior="automatic"
+            automaticallyAdjustContentInsets={true}
+          />
+        )}
       </View>
-    </TouchableWithoutFeedback>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'position' : undefined}
+        style={styles.navigationBarContainer} 
+        keyboardVerticalOffset={0}>
+        <View style={[styles.navigationBar, { backgroundColor: navBarBackgroundColor }]}>
+          <TouchableOpacity 
+            onPress={handleBackPress}
+            style={styles.button}>
+            <IconSymbol size={20} name="chevron.left" color={navBarTextColor} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={handleHomePress}
+            style={styles.button}>
+            <IconSymbol size={20} name="house.fill" color={navBarTextColor} />
+          </TouchableOpacity>
+          <TextInput
+            style={[styles.input, { color: navBarTextColor }]}
+            value={currentUrl}
+            onChangeText={setCurrentUrl}
+            onSubmitEditing={() => goToUrl(currentUrl)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="go"
+          />
+          <TouchableOpacity 
+            onPress={() => setIsWalletInfoSheetVisible(true)}
+            style={styles.button}>
+            <IconSymbol size={20} name="key.fill" color={navBarTextColor} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+
+      <WalletConnectSheet
+        isVisible={isWalletSheetVisible}
+        onClose={handleConnectCancel}
+        onConnect={handleConnectConfirm}
+        onCancel={handleConnectCancel}
+      />
+      <WalletInfoSheet
+        isVisible={isWalletInfoSheetVisible}
+        onClose={() => setIsWalletInfoSheetVisible(false)}
+        onDisconnect={handleDisconnect}
+        onSwitchWallet={handleSwitchWallet}
+        wallet={connectedWallet}
+      />
+      <SignatureRequestSheet
+        isVisible={isSignatureSheetVisible}
+        message={signatureMessage}
+        currentWallet={connectedWallet}
+        currentChainId={currentChainId}
+        onClose={handleSignatureClose}
+        onSuccess={handleSignatureSuccess}
+      />
+      <TransactionRequestSheet
+        isVisible={isTransactionSheetVisible}
+        transaction={transactionDetails}
+        currentWallet={connectedWallet}
+        currentChainId={currentChainId}
+        onClose={handleTransactionClose}
+        onSuccess={handleTransactionSuccess}
+      />
+    </View>
   );
 }
 

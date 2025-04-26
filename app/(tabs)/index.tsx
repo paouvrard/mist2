@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { WalletTypeSheet } from '@/components/WalletTypeSheet';
 import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
 import { QRScannerSheet } from '@/components/QRScannerSheet';
-import { addWallet, getWallets, deleteWallet, type Wallet } from '@/utils/walletStorage';
+import { addWallet, getWallets, deleteWallet, type Wallet, truncateAddress } from '@/utils/walletStorage';
 import { HitoManager } from '@/utils/hito/hitoManager';
 
 function HomeScreen() {
@@ -132,7 +132,7 @@ function HomeScreen() {
               )}
             </View>
             <ThemedText style={styles.walletAddress}>
-              {wallet.address}
+              {truncateAddress(wallet.address)}
             </ThemedText>
           </View>
           <TouchableOpacity

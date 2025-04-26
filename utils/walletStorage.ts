@@ -33,6 +33,16 @@ export type EoaWallet = {
 
 export type Wallet = ViewOnlyWallet | HitoWallet | Lattice1Wallet | WalletConnectWallet | LedgerWallet | EoaWallet;
 
+/**
+ * Truncates an Ethereum address to show first 10 and last 12 characters
+ * @param address The full wallet address
+ * @returns The truncated address with ellipsis in the middle
+ */
+export function truncateAddress(address: string): string {
+  if (!address || address.length <= 22) return address;
+  return `${address.substring(0, 15)}...${address.substring(address.length - 17)}`;
+}
+
 const STORAGE_KEY = '@wallets';
 
 export async function getWallets(): Promise<Wallet[]> {

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { getWallets, type Wallet } from '@/utils/walletStorage';
+import { getWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;
@@ -108,7 +108,8 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
               key={index}
               style={[
                 styles.walletOption,
-                selectedWallet?.address === wallet.address && styles.selectedWallet,
+                (selectedWallet?.address === wallet.address && selectedWallet?.type === wallet.type) &&
+                  styles.selectedWallet,
               ]}
               onPress={() => setSelectedWallet(wallet)}
               activeOpacity={0.8}>
@@ -116,7 +117,7 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
                 {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
               </ThemedText>
               <ThemedText style={styles.walletAddress}>
-                {wallet.address}
+                {truncateAddress(wallet.address)}
               </ThemedText>
             </TouchableOpacity>
           ))}
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   walletList: {
-    maxHeight: 200,
+    maxHeight: 300, // Increased from 200 to show more wallets before scrolling
   },
   walletOption: {
     padding: 16,
