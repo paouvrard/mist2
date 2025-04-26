@@ -9,9 +9,10 @@ import { WagmiProvider } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit, defaultWagmiConfig, AppKit } from "@reown/appkit-wagmi-react-native";
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { chains } from '@/utils/chains';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -47,6 +48,7 @@ createAppKit({
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const backgroundColor = useThemeColor({}, 'background');
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -64,19 +66,21 @@ export default function RootLayout() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-            keyboardVerticalOffset={0}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="auto" />
-          </KeyboardAvoidingView>
-        </ThemeProvider>
-        <AppKit />
+        <View style={[styles.container, { backgroundColor }]}>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <View style={styles.navigationContainer}>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+              <StatusBar style="auto" />
+            </View>
+          </ThemeProvider>
+          {/* AppKit with higher z-index */}
+          <View style={styles.appKitContainer}>
+            <AppKit />
+          </View>
+        </View>
       </QueryClientProvider>
     </WagmiProvider>
   );
@@ -85,5 +89,19 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
+  },
+  navigationContainer: {
+    flex: 1,
+  },
+  appKitContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999, // High z-index to ensure it appears above everything else
+    elevation: 999, // For Android
+    pointerEvents: 'box-none' // This allows touches to pass through when modal is not visible
   }
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -18,6 +18,8 @@ import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Wallet } from '@/utils/walletStorage';
 import { wagmiConfig } from '@/app/_layout';
+import { HitoManager } from '@/utils/hito/hitoManager';
+import { QRScannerSheet } from './QRScannerSheet';
 
 interface Props {
   isVisible: boolean;
@@ -46,10 +48,12 @@ export function TransactionRequestSheet({
   const [isRendered, setIsRendered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
   const { open } = useAppKit();
   const { address } = useAccount();
+  const hitoManager = new HitoManager();
 
   useEffect(() => {
     if (isVisible) {
@@ -62,6 +66,7 @@ export function TransactionRequestSheet({
           runOnJS(setIsRendered)(false);
           runOnJS(setError)(null);
           runOnJS(setIsLoading)(false);
+          runOnJS(setShowQRScanner)(false);
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
@@ -75,23 +80,65 @@ export function TransactionRequestSheet({
     setError(null);
     
     try {
-      await switchChain(wagmiConfig, { chainId: currentChainId });
-      // Send the transaction
-      const hash = await sendTransaction(wagmiConfig, transaction);
-      
-      // Call onSuccess with the transaction hash before closing
-      if (onSuccess) {
-        onSuccess(hash);
+      // Handle different wallet types
+      if (currentWallet.type === 'hito') {
+        console.log('Sending transaction to Hito wallet for signing:', transaction);
+        
+        // Check NFC support
+        const nfcStatus = await HitoManager.checkNFCSupport();
+        if (!nfcStatus.isSupported) {
+          throw new Error(nfcStatus.message || 'NFC is required and not available');
+        }
+        
+        // Format transaction for Hito
+        const formattedTx = hitoManager.formatTransaction(transaction, currentWallet.address);
+        
+        // Send transaction to Hito via NFC
+        await hitoManager.writeTransactionToNFC(formattedTx);
+        
+        // Show alert and prepare to scan QR code for signature
+        Alert.alert(
+          'Transaction Sent to Hito',
+          'Please sign the transaction on your Hito device, then scan the QR code with the signature.',
+          [
+            { text: 'Scan Signature', onPress: () => setShowQRScanner(true) }
+          ]
+        );
+        
+        // We'll continue the transaction process when QR is scanned
+        setIsLoading(false);
+      } else if (currentWallet.type === 'wallet-connect') {
+        await switchChain(wagmiConfig, { chainId: currentChainId });
+        // Send the transaction
+        const hash = await sendTransaction(wagmiConfig, transaction);
+        
+        // Call onSuccess with the transaction hash before closing
+        if (onSuccess) {
+          onSuccess(hash);
+        }
+        
+        onClose();
+      } else if (currentWallet.type === 'view-only') {
+        throw new Error('View-only wallets cannot send transactions');
+      } else {
+        await switchChain(wagmiConfig, { chainId: currentChainId });
+        // Send the transaction
+        const hash = await sendTransaction(wagmiConfig, transaction);
+        
+        // Call onSuccess with the transaction hash before closing
+        if (onSuccess) {
+          onSuccess(hash);
+        }
+        
+        onClose();
       }
-      
-      onClose();
     } catch (err) {
+      console.error('Transaction error:', err);
       if (err instanceof Error) {
         setError(err.message || 'Failed to send transaction');
       } else {
         setError('Failed to send transaction');
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -105,6 +152,30 @@ export function TransactionRequestSheet({
       } else {
         setError('Failed to open WalletConnect');
       }
+    }
+  };
+  
+  // Handle signature from QR scanner for Hito wallet
+  const handleSignatureScanned = async (signatureData: string) => {
+    console.log('Transaction signature received from QR code:', signatureData);
+    
+    try {
+      setIsLoading(true);
+      
+      // Process the signature
+      const signedTx = hitoManager.processScannedSignature(signatureData);
+      console.log('Processed signed transaction:', signedTx);
+      const txHash = ""
+      
+      if (onSuccess) {
+        onSuccess(txHash);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Error processing or broadcasting transaction:', error);
+      setError(error instanceof Error ? error.message : 'Failed to broadcast transaction');
+      setIsLoading(false);
     }
   };
 
@@ -122,6 +193,7 @@ export function TransactionRequestSheet({
 
   const isViewOnly = currentWallet?.type === 'view-only';
   const isWalletConnect = currentWallet?.type === 'wallet-connect';
+  const isHito = currentWallet?.type === 'hito';
   const accountMatches = currentWallet?.address.toLowerCase() === address?.toLowerCase();
 
   return (
@@ -132,7 +204,7 @@ export function TransactionRequestSheet({
           { backgroundColor: 'rgba(0,0,0,0.5)' },
           overlayStyle,
         ]}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={!isLoading ? onClose : undefined} />
       </Animated.View>
       <Animated.View
         style={[
@@ -224,14 +296,43 @@ export function TransactionRequestSheet({
             </ThemedText>
           </TouchableOpacity>
         )}
+        
+        {isHito && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.approveButton,
+              isLoading && styles.disabledButton,
+            ]}
+            onPress={handleApprove}
+            disabled={isLoading}
+            activeOpacity={0.8}>
+            <ThemedText style={styles.buttonText}>
+              {isLoading ? 'Preparing...' : 'Sign with Hito'}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={onClose}
+          style={[
+            styles.button,
+            styles.cancelButton,
+            isLoading && styles.disabledButton,
+          ]}
+          onPress={!isLoading ? onClose : undefined}
+          disabled={isLoading}
           activeOpacity={0.8}>
           <ThemedText style={styles.buttonText}>Cancel</ThemedText>
         </TouchableOpacity>
       </Animated.View>
+      
+      {/* QR Scanner for Hito signature */}
+      <QRScannerSheet
+        isVisible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        purpose="signature"
+        onScanComplete={handleSignatureScanned}
+      />
     </>
   );
 }

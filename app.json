@@ -8,13 +8,34 @@
     "scheme": "mist2",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Mist2 to access your camera to scan Hito wallet QR codes."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mist2.app",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
-          "wc"
-        ]
+          "wc",
+          "hito"
+        ],
+        "NFCReaderUsageDescription": "Allow Mist2 to use NFC to communicate with your Hito hardware wallet",
+        "NSCameraUsageDescription": "Camera access is required to scan Hito wallet QR codes"
       }
     },
     "android": {
@@ -23,12 +44,21 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.mist2.app",
+      "permissions": [
+        "INTERNET",
+        "NFC",
+        "CAMERA",
+        "android.permission.CAMERA"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
           "data": [
             {
               "scheme": "wc"
+            },
+            {
+              "scheme": "hito"
             }
           ],
           "category": [
@@ -43,20 +73,14 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
-    ],
     "experiments": {
       "typedRoutes": true
+    },
+    "jsEngine": "hermes",
+    "extra": {
+      "eas": {
+        "projectId": "69968fea-7a83-4fcb-b7c7-f6fcb577c34e"
+      }
     }
   }
 }

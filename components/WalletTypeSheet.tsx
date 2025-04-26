@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -8,18 +8,15 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppKit } from '@reown/appkit-wagmi-react-native';
-import { useWalletClient } from 'wagmi';
 
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { ViewOnlyWallet, WalletConnectWallet } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
-  onAddWallet: (wallet: ViewOnlyWallet | WalletConnectWallet) => void;
+  onSelectWalletType: (type: 'view-only' | 'wallet-connect' | 'hito') => void;
 }
 
 const SPRING_CONFIG = {
@@ -27,16 +24,12 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
+export function WalletTypeSheet({ isVisible, onClose, onSelectWalletType }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
-  const [showAddressInput, setShowAddressInput] = useState(false);
-  const [address, setAddress] = useState('');
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
-  const { open } = useAppKit();
-  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     if (isVisible) {
@@ -47,8 +40,6 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
       opacity.value = withTiming(0, undefined, (finished) => {
         if (finished) {
           runOnJS(setIsRendered)(false);
-          runOnJS(setShowAddressInput)(false);
-          runOnJS(setAddress)('');
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
@@ -64,34 +55,15 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
   }));
 
   const handleViewOnlySelect = () => {
-    setShowAddressInput(true);
+    onSelectWalletType('view-only');
   };
 
-  const handleConnect = () => {
-    if (address.trim()) {
-      onAddWallet({
-        type: 'view-only',
-        address: address.trim()
-      });
-      onClose();
-    }
+  const handleWalletConnectSelect = () => {
+    onSelectWalletType('wallet-connect');
   };
 
-  const handleWalletConnectSelect = async () => {
-    try {
-      await open();
-      
-      if (walletClient) {
-        onAddWallet({
-          type: 'wallet-connect',
-          address: walletClient.account.address
-        });
-      }
-      
-      onClose();
-    } catch (error) {
-      console.error('WalletConnect error:', error);
-    }
+  const handleHitoSelect = () => {
+    onSelectWalletType('hito');
   };
 
   if (!isRendered && !isVisible) {
@@ -119,63 +91,42 @@ export function WalletTypeSheet({ isVisible, onClose, onAddWallet }: Props) {
         ]}>
         <ThemedView style={styles.handle} />
         <ThemedText type="title" style={styles.title}>
-          {showAddressInput ? 'Enter Address' : 'Select Wallet Type'}
+          Select Wallet Type
         </ThemedText>
         
-        {!showAddressInput ? (
-          <>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton]}
-              onPress={handleViewOnlySelect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>View Only</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton]}
-              onPress={handleWalletConnectSelect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>WalletConnect</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton, styles.disabledButton]}
-              activeOpacity={0.8}>
-              <ThemedText style={[styles.buttonText, styles.disabledText]}>Hito (Coming Soon)</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton, styles.disabledButton]}
-              activeOpacity={0.8}>
-              <ThemedText style={[styles.buttonText, styles.disabledText]}>Lattice1 (Coming Soon)</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton, styles.disabledButton]}
-              activeOpacity={0.8}>
-              <ThemedText style={[styles.buttonText, styles.disabledText]}>Ledger (Coming Soon)</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.typeButton, styles.disabledButton]}
-              activeOpacity={0.8}>
-              <ThemedText style={[styles.buttonText, styles.disabledText]}>Private Key (Coming Soon)</ThemedText>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Enter wallet address"
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              style={[styles.button, styles.connectButton]}
-              onPress={handleConnect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>Connect</ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton]}
+          onPress={handleViewOnlySelect}
+          activeOpacity={0.8}>
+          <ThemedText style={styles.buttonText}>View Only</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton]}
+          onPress={handleWalletConnectSelect}
+          activeOpacity={0.8}>
+          <ThemedText style={styles.buttonText}>WalletConnect</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton]}
+          onPress={handleHitoSelect}
+          activeOpacity={0.8}>
+          <ThemedText style={styles.buttonText}>Hito</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton, styles.disabledButton]}
+          activeOpacity={0.8}>
+          <ThemedText style={[styles.buttonText, styles.disabledText]}>Lattice1 (Coming Soon)</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton, styles.disabledButton]}
+          activeOpacity={0.8}>
+          <ThemedText style={[styles.buttonText, styles.disabledText]}>Ledger (Coming Soon)</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.typeButton, styles.disabledButton]}
+          activeOpacity={0.8}>
+          <ThemedText style={[styles.buttonText, styles.disabledText]}>Private Key (Coming Soon)</ThemedText>
+        </TouchableOpacity>
       </Animated.View>
     </>
   );
@@ -227,22 +178,9 @@ const styles = StyleSheet.create({
   disabledText: {
     color: '#666',
   },
-  connectButton: {
-    backgroundColor: '#0a7ea4',
-    marginTop: 16,
-  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  inputContainer: {
-    width: '100%',
-  },
-  input: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
   },
 });

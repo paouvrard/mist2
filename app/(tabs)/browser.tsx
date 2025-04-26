@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView, TouchableWithoutFeedback } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -36,6 +36,7 @@ export default function BrowserScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>(1); // Default to Ethereum mainnet
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const webViewRef = useRef<WebView>(null);
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
   const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
@@ -43,16 +44,29 @@ export default function BrowserScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigationBarHeight = 50; // Fixed height for the navigation bar
   const { setHideTabBar } = useTabVisibility();
+  
+  // Define navigation bar colors
+  const navBarBackgroundColor = '#333333'; // Dark gray background for navigation bar
+  const navBarTextColor = '#CCCCCC'; // Light gray for text and icons
 
-  // Track keyboard visibility
+  // Track keyboard visibility and height with improved handlers
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
+      (event) => {
+        setKeyboardVisible(true);
+        if (Platform.OS === 'ios') {
+          setKeyboardHeight(event.endCoordinates.height);
+        }
+      }
     );
+
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
 
     return () => {
@@ -577,96 +591,101 @@ export default function BrowserScreen() {
     }
   };
 
+  // Function to dismiss keyboard
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (showWelcome) {
     return <WelcomePage onNavigate={goToUrl} />;
   }
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor }]}
-      keyboardVerticalOffset={insets.bottom}>
-      <View style={[styles.webviewContainer, { 
-        paddingTop: insets.top,
-        marginBottom: navigationBarHeight + (keyboardVisible ? 0 : tabBarHeight),
-      }]}>
-        {url && (
-          <WebView
-            ref={webViewRef}
-            source={{ uri: url }}
-            style={styles.webview}
-            onNavigationStateChange={(navState) => {
-              setCurrentUrl(navState.url);
-              setCanGoBack(navState.canGoBack);
-            }}
-            injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
-            onMessage={handleMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            keyboardDisplayRequiresUserAction={false}
-          />
-        )}
-      </View>
-      <View style={[styles.navigationBar, { 
-        bottom: keyboardVisible ? 0 : tabBarHeight,
-        marginBottom: keyboardVisible ? 0 : 6
-      }]}>
-        <TouchableOpacity 
-          onPress={handleBackPress}
-          style={styles.button}>
-          <IconSymbol size={20} name="chevron.left" color={textColor} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          onPress={handleHomePress}
-          style={styles.button}>
-          <IconSymbol size={20} name="house.fill" color={textColor} />
-        </TouchableOpacity>
-        <TextInput
-          style={[styles.input, { color: textColor }]}
-          value={currentUrl}
-          onChangeText={setCurrentUrl}
-          onSubmitEditing={() => goToUrl(currentUrl)}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          returnKeyType="go"
+    <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
+      <View style={[styles.container, { backgroundColor }]}>
+        <View style={[styles.webviewContainer]}>
+          {url && (
+            <WebView
+              ref={webViewRef}
+              source={{ uri: url }}
+              style={styles.webview}
+              onNavigationStateChange={(navState) => {
+                setCurrentUrl(navState.url);
+                setCanGoBack(navState.canGoBack);
+              }}
+              injectedJavaScriptBeforeContentLoaded={INJECT_PROVIDER_JS}
+              onMessage={handleMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              keyboardDisplayRequiresUserAction={false}
+            />
+          )}
+        </View>
+
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'position' : undefined}
+          style={styles.navigationBarContainer} 
+          keyboardVerticalOffset={0}>
+          <View style={[styles.navigationBar, { backgroundColor: navBarBackgroundColor }]}>
+            <TouchableOpacity 
+              onPress={handleBackPress}
+              style={styles.button}>
+              <IconSymbol size={20} name="chevron.left" color={navBarTextColor} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleHomePress}
+              style={styles.button}>
+              <IconSymbol size={20} name="house.fill" color={navBarTextColor} />
+            </TouchableOpacity>
+            <TextInput
+              style={[styles.input, { color: navBarTextColor }]}
+              value={currentUrl}
+              onChangeText={setCurrentUrl}
+              onSubmitEditing={() => goToUrl(currentUrl)}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="go"
+            />
+            <TouchableOpacity 
+              onPress={() => setIsWalletInfoSheetVisible(true)}
+              style={styles.button}>
+              <IconSymbol size={20} name="key.fill" color={navBarTextColor} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+
+        <WalletConnectSheet
+          isVisible={isWalletSheetVisible}
+          onClose={handleConnectCancel}
+          onConnect={handleConnectConfirm}
+          onCancel={handleConnectCancel}
         />
-        <TouchableOpacity 
-          onPress={() => setIsWalletInfoSheetVisible(true)}
-          style={styles.button}>
-          <IconSymbol size={20} name="key.fill" color={textColor} />
-        </TouchableOpacity>
+        <WalletInfoSheet
+          isVisible={isWalletInfoSheetVisible}
+          onClose={() => setIsWalletInfoSheetVisible(false)}
+          onDisconnect={handleDisconnect}
+          onSwitchWallet={handleSwitchWallet}
+          wallet={connectedWallet ?? {} as Wallet}
+        />
+        <SignatureRequestSheet
+          isVisible={isSignatureSheetVisible}
+          message={signatureMessage}
+          currentWallet={connectedWallet}
+          currentChainId={currentChainId}
+          onClose={handleSignatureClose}
+          onSuccess={handleSignatureSuccess}
+        />
+        <TransactionRequestSheet
+          isVisible={isTransactionSheetVisible}
+          transaction={transactionDetails}
+          currentWallet={connectedWallet}
+          currentChainId={currentChainId}
+          onClose={handleTransactionClose}
+          onSuccess={handleTransactionSuccess}
+        />
       </View>
-      <WalletConnectSheet
-        isVisible={isWalletSheetVisible}
-        onClose={handleConnectCancel}
-        onConnect={handleConnectConfirm}
-        onCancel={handleConnectCancel}
-      />
-      <WalletInfoSheet
-        isVisible={isWalletInfoSheetVisible}
-        onClose={() => setIsWalletInfoSheetVisible(false)}
-        onDisconnect={handleDisconnect}
-        onSwitchWallet={handleSwitchWallet}
-        wallet={connectedWallet ?? {} as Wallet}
-      />
-      <SignatureRequestSheet
-        isVisible={isSignatureSheetVisible}
-        message={signatureMessage}
-        currentWallet={connectedWallet}
-        currentChainId={currentChainId}
-        onClose={handleSignatureClose}
-        onSuccess={handleSignatureSuccess}
-      />
-      <TransactionRequestSheet
-        isVisible={isTransactionSheetVisible}
-        transaction={transactionDetails}
-        currentWallet={connectedWallet}
-        currentChainId={currentChainId}
-        onClose={handleTransactionClose}
-        onSuccess={handleTransactionSuccess}
-      />
-    </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -676,6 +695,14 @@ const styles = StyleSheet.create({
   },
   webviewContainer: {
     flex: 1,
+    paddingBottom: 50, // Fixed padding for the navigation bar height
+  },
+  navigationBarContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    elevation: 8, // Add elevation for Android to ensure it's above other elements
   },
   navigationBar: {
     flexDirection: 'row',
@@ -683,25 +710,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.3)',
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    backdropFilter: 'blur(10px)',
+    borderTopColor: 'rgba(0,0,0,0.5)',
     height: 50,
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    ...Platform.select({
+      android: {
+        elevation: 4, // Add elevation on Android to create shadow effect
+      }
+    }),
   },
   button: {
     padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 40, // Ensure minimum touch target size
+    minHeight: 40, // Ensure minimum touch target size
   },
   input: {
     flex: 1,
-    height: 40,
+    height: 36,
     marginHorizontal: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#444444', // Darker input field to match the dark theme
+    color: '#CCCCCC', // Light gray text for input
   },
   webview: {
     flex: 1,

@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppKit } from '@reown/appkit-wagmi-react-native';
+import { useAccount, useWalletClient } from 'wagmi';
+
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { WalletTypeSheet } from '@/components/WalletTypeSheet';
+import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
+import { QRScannerSheet } from '@/components/QRScannerSheet';
 import { addWallet, getWallets, deleteWallet, type Wallet } from '@/utils/walletStorage';
-import { useAccount } from 'wagmi';
+import { HitoManager } from '@/utils/hito/hitoManager';
 
-export default function HomeScreen() {
+function HomeScreen() {
   const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
+  const [isViewOnlyAddressSheetVisible, setIsViewOnlyAddressSheetVisible] = useState(false);
+  const [isQRScannerVisible, setIsQRScannerVisible] = useState(false);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
   const { address, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const { open } = useAppKit();
 
   const loadWallets = async () => {
     const savedWallets = await getWallets();
@@ -44,6 +53,67 @@ export default function HomeScreen() {
 
   const isWalletConnected = (wallet: Wallet) => {
     return isConnected && wallet.type === 'wallet-connect' && wallet.address.toLowerCase() === address?.toLowerCase();
+  };
+
+  const handleHitoAddressScanned = (scannedAddress: string) => {
+    console.log('Hito wallet address scanned:', scannedAddress);
+    
+    // Add the Hito wallet with the scanned address
+    handleAddWallet({
+      type: 'hito',
+      address: scannedAddress
+    });
+    
+    // Close the QR scanner
+    setIsQRScannerVisible(false);
+  };
+
+  const handleViewOnlyConnect = (address: string) => {
+    handleAddWallet({
+      type: 'view-only',
+      address: address
+    });
+    setIsViewOnlyAddressSheetVisible(false);
+  };
+
+  const handleCloseViewOnlySheet = () => {
+    setIsViewOnlyAddressSheetVisible(false);
+  };
+
+  const handleCloseQRScanner = () => {
+    setIsQRScannerVisible(false);
+  };
+
+  const handleSelectWalletType = async (type: 'view-only' | 'wallet-connect' | 'hito') => {
+    setIsWalletTypeSheetVisible(false);
+    try {
+      if (type === 'view-only') {
+        // Show the view-only address input sheet
+        setIsViewOnlyAddressSheetVisible(true);
+        // WalletTypeSheet will remain visible in the background
+      } 
+      else if (type === 'wallet-connect') {
+        // Close the wallet type sheet first
+        setIsWalletTypeSheetVisible(false);
+        // Open WalletConnect modal
+        await open();
+        
+        // If a wallet client is connected, get the address
+        if (walletClient) {
+          await handleAddWallet({
+            type: 'wallet-connect',
+            address: walletClient.account.address
+          });
+        }
+      }
+      else if (type === 'hito') {
+        // For Hito wallets, show the QR scanner
+        setIsQRScannerVisible(true);
+        // WalletTypeSheet will remain visible in the background
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+    }
   };
 
   return (
@@ -84,11 +154,27 @@ export default function HomeScreen() {
       <WalletTypeSheet
         isVisible={isWalletTypeSheetVisible}
         onClose={() => setIsWalletTypeSheetVisible(false)}
-        onAddWallet={handleAddWallet}
+        onSelectWalletType={handleSelectWalletType}
+      />
+
+      <ViewOnlyAddressSheet
+        isVisible={isViewOnlyAddressSheetVisible}
+        onClose={handleCloseViewOnlySheet}
+        onConnect={handleViewOnlyConnect}
+      />
+
+      <QRScannerSheet
+        isVisible={isQRScannerVisible}
+        onClose={handleCloseQRScanner}
+        purpose="address"
+        onScanComplete={handleHitoAddressScanned}
       />
     </ThemedView>
   );
 }
+
+// Explicitly export the default component
+export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
