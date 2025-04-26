@@ -14,6 +14,7 @@ interface Props {
   onClose: () => void;
   purpose: ScanPurpose;
   onScanComplete: (data: string) => void;
+  keepTabBarHidden?: boolean;
 }
 
 /**
@@ -21,7 +22,7 @@ interface Props {
  * - Scans wallet addresses
  * - Scans transaction/message signatures
  */
-export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete }: Props) {
+export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete, keepTabBarHidden = false }: Props) {
   const [scanned, setScanned] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
@@ -33,18 +34,21 @@ export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete }: 
       requestPermission();
     }
     
-    // Only hide tab bar on Android when the scanner is open
+    // Always hide tab bar when the scanner is open
     if (isVisible) {
       setHideTabBar(true);
-    } else {
+    } else if (!keepTabBarHidden) {
+      // Only show tab bar when scanner closes AND keepTabBarHidden is false
       setHideTabBar(false);
     }
     
     return () => {
-      // Ensure tab bar is shown when component unmounts
-      setHideTabBar(false);
+      // Only show tab bar when unmounting if keepTabBarHidden is false
+      if (!keepTabBarHidden) {
+        setHideTabBar(false);
+      }
     };
-  }, [isVisible, permission, setHideTabBar]);
+  }, [isVisible, permission, setHideTabBar, keepTabBarHidden]);
 
   // Custom onClose handler to ensure close works on iOS
   const handleClose = () => {

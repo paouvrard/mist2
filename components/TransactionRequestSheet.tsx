@@ -332,6 +332,7 @@ export function TransactionRequestSheet({
         onClose={() => setShowQRScanner(false)}
         purpose="signature"
         onScanComplete={handleSignatureScanned}
+        keepTabBarHidden={true}
       />
     </>
   );
