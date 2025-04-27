@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, Keyb
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
@@ -44,10 +45,43 @@ export default function BrowserScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigationBarHeight = 50; // Fixed height for the navigation bar
   const { setHideTabBar } = useTabVisibility();
+  const params = useLocalSearchParams();
   
   // Define navigation bar colors
   const navBarBackgroundColor = '#333333'; // Dark gray background for navigation bar
   const navBarTextColor = '#CCCCCC'; // Light gray for text and icons
+
+  // Track if this is the first time focusing or if we're returning after going to another tab
+  const [isFocused, setIsFocused] = useState(false);
+  const wasUnfocused = useRef(false);
+
+  // Add focus effect to track when the screen gains and loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // When the screen comes into focus
+      setIsFocused(true);
+      
+      // If we were previously unfocused and are now returning to the screen,
+      // reset to the welcome page
+      if (wasUnfocused.current) {
+        handleHomePress();
+        wasUnfocused.current = false;
+      }
+      
+      return () => {
+        // When the screen loses focus
+        setIsFocused(false);
+        wasUnfocused.current = true;
+      };
+    }, [])
+  );
+
+  // Listen for the resetWebView parameter to know when to reset the webview
+  useEffect(() => {
+    if (params.resetWebView === 'true') {
+      handleHomePress();
+    }
+  }, [params.resetWebView]);
 
   // Track keyboard visibility and height with improved handlers
   useEffect(() => {

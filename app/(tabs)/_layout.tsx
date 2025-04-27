@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import React, { useState } from 'react';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useState, useRef, useCallback } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
@@ -12,6 +12,21 @@ import { TabVisibilityContext } from '@/hooks/useTabVisibility';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [hideTabBar, setHideTabBar] = useState(false);
+  const router = useRouter();
+  const previousRoute = useRef('');
+  const currentRoute = useRef('');
+
+  // Handler for tab screen changes
+  const handleTabPress = useCallback((name: string) => {
+    previousRoute.current = currentRoute.current;
+    currentRoute.current = name;
+
+    // If we're switching from browser to index, we need to reset the browser screen
+    if (name === 'index' && previousRoute.current === 'browser') {
+      // Use the global event system to notify the browser to reset
+      router.setParams({ resetWebView: 'true' });
+    }
+  }, [router]);
 
   return (
     <TabVisibilityContext.Provider value={{ hideTabBar, setHideTabBar }}>
@@ -39,12 +54,18 @@ export default function TabLayout() {
             title: 'Wallets', // Keep title for accessibility
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="key.fill" color={color} />,
           }}
+          listeners={{
+            tabPress: () => handleTabPress('index')
+          }}
         />
         <Tabs.Screen
           name="browser"
           options={{
             title: 'Browser', // Keep title for accessibility
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="safari.fill" color={color} />,
+          }}
+          listeners={{
+            tabPress: () => handleTabPress('browser')
           }}
         />
       </Tabs>
