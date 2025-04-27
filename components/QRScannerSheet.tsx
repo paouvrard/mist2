@@ -93,6 +93,15 @@ export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete, ke
       } else if (purpose === 'signature') {
         console.log('Processing signature QR data');
         
+        // Check for Hito's evm.sig: format
+        if (data.startsWith('evm.sig:0x')) {
+          const signature = data.slice('evm.sig:'.length);
+          console.log('Valid Hito signature detected:', signature);
+          onScanComplete(signature);
+          handleClose();
+          return;
+        }
+        
         try {
           // Try parsing as JSON first
           const parsed = JSON.parse(data);
@@ -118,7 +127,7 @@ export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete, ke
             onScanComplete(data);
             handleClose();
           } else {
-            throw new Error('Unrecognized QR data format. Expected JSON or hex string starting with 0x.');
+            throw new Error('Unrecognized QR data format. Expected Hito signature (evm.sig:0x...), JSON or hex string starting with 0x.');
           }
         }
       }

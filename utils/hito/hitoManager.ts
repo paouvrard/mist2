@@ -69,21 +69,46 @@ export class HitoManager {
       // Initialize NFC
       await NfcManager.requestTechnology(NfcTech.Ndef);
       
-      // Prepare transaction data
-      const txJson = JSON.stringify(tx);
-      console.log('Sending transaction to Hito:', txJson);
+      // Format the transaction as per Hito requirements
+      // The payload should be in the format: evm.sign:{walletAddress}:{txUnsignedHex}
+      let txUnsignedHex = tx.unsignedTx || tx.data;
       
-      // Create NDEF message
-      const bytes = Ndef.encodeMessage([
-        Ndef.textRecord(txJson)
-      ]);
-      
-      if (bytes) {
-        await NfcManager.ndefHandler.writeNdefMessage(bytes);
-        console.log('Transaction data sent to Hito successfully');
-        return true;
+      // Ensure transaction hex starts with 0x
+      if (!txUnsignedHex || !txUnsignedHex.startsWith('0x')) {
+        console.log('Transaction hex is missing or improperly formatted, sending as JSON instead');
+        // Fall back to JSON if we don't have proper hex
+        const txJson = JSON.stringify(tx);
+        console.log('Sending transaction to Hito as JSON:', txJson);
+        
+        const bytes = Ndef.encodeMessage([
+          Ndef.textRecord(txJson)
+        ]);
+        
+        if (bytes) {
+          await NfcManager.ndefHandler.writeNdefMessage(bytes);
+          console.log('Transaction data sent to Hito successfully');
+          return true;
+        } else {
+          throw new Error('Failed to encode NDEF message');
+        }
       } else {
-        throw new Error('Failed to encode NDEF message');
+        // Create the payload string in the format expected by Hito
+        const payload = `evm.sign:${tx.from}:${txUnsignedHex}`;
+        
+        console.log('Sending transaction to Hito:', payload);
+        
+        // Create NDEF message
+        const bytes = Ndef.encodeMessage([
+          Ndef.textRecord(payload)
+        ]);
+        
+        if (bytes) {
+          await NfcManager.ndefHandler.writeNdefMessage(bytes);
+          console.log('Transaction data sent to Hito successfully');
+          return true;
+        } else {
+          throw new Error('Failed to encode NDEF message');
+        }
       }
     } catch (error) {
       console.error('Error writing to NFC:', error);
@@ -113,19 +138,22 @@ export class HitoManager {
       
       await NfcManager.requestTechnology(NfcTech.Ndef);
       
-      // Format message data for Hito
-      const msgData = {
-        from: address,
-        message: message,
-        type: 'personal_sign'
-      };
+      // Format message data for Hito according to the expected format: evm.msg:{walletAddress}:{msgHex}
+      // Convert message to hex if it's not already
+      let msgHex = message;
+      if (!message.startsWith('0x')) {
+        // Convert string message to hex
+        msgHex = '0x' + Buffer.from(message, 'utf8').toString('hex');
+      }
+
+      // Create the payload string in the format expected by Hito
+      const payload = `evm.msg:${address}:${msgHex}`;
       
-      const msgJson = JSON.stringify(msgData);
-      console.log('Sending message to Hito for signing:', msgJson);
+      console.log('Sending message to Hito for signing:', payload);
       
       // Create NDEF message
       const bytes = Ndef.encodeMessage([
-        Ndef.textRecord(msgJson)
+        Ndef.textRecord(payload)
       ]);
       
       if (bytes) {
@@ -155,6 +183,20 @@ export class HitoManager {
     console.log('Processing scanned signature data:', signatureData);
     
     try {
+      // Handle Hito wallet format that starts with 'evm.sig:'
+      if (signatureData.startsWith('evm.sig:')) {
+        let signatureHex = signatureData.replace('evm.sig:', '');
+        
+        // Workaround for old version Hito with a non-even signature length
+        if (signatureHex.length % 2 !== 0) {
+          signatureHex = signatureHex.replace(/0$|1$/, 
+            match => match === '0' ? '00' : '01');
+        }
+        
+        console.log('Processed Hito signature:', signatureHex);
+        return signatureHex;
+      }
+      
       // If already in hex format
       if (signatureData.startsWith('0x')) {
         console.log('Signature is already in hex format');
@@ -175,7 +217,7 @@ export class HitoManager {
         }
       } catch (jsonError) {
         console.error('Error parsing signature JSON:', jsonError);
-        // If not JSON and not hex, it's an invalid format
+        // If not JSON and not one of the expected formats, it's invalid
         throw new Error('Invalid signature format from Hito QR code');
       }
     } catch (error) {
