@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
 import { useAccount, useWalletClient } from 'wagmi';
@@ -12,6 +13,7 @@ import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
 import { QRScannerSheet } from '@/components/QRScannerSheet';
 import { addWallet, getWallets, deleteWallet, type Wallet, truncateAddress } from '@/utils/walletStorage';
 import { HitoManager } from '@/utils/hito/hitoManager';
+import { useTabVisibility } from '@/hooks/useTabVisibility';
 
 function HomeScreen() {
   const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
@@ -22,6 +24,18 @@ function HomeScreen() {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
+  const { setHideTabBar } = useTabVisibility();
+
+  // Ensure tab bar is visible whenever HomeScreen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Show tab bar when the screen is focused
+      setHideTabBar(false);
+      return () => {
+        // No cleanup needed
+      };
+    }, [setHideTabBar])
+  );
 
   const loadWallets = async () => {
     const savedWallets = await getWallets();
