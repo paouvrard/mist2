@@ -137,6 +137,42 @@ After the initial setup, for daily development you only need to:
 2. Run `npx expo start --dev-client`
 3. Launch the installed app on your device
 
+### Android Release Build on Physical Device
+
+To run the app as a production build on your Android phone:
+
+1. Create local.properties file (if not already present)
+   ```bash
+   echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
+   ```
+
+2. Build a release APK
+   ```bash
+   cd android && ./gradlew assembleRelease
+   ```
+
+3. Make sure ADB is in your PATH
+   ```bash
+   # For one-time use
+   export PATH=$PATH:$HOME/Library/Android/sdk/platform-tools/
+   
+   # Or add permanently to your shell profile
+   echo 'export PATH=$PATH:$HOME/Library/Android/sdk/platform-tools/' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+4. Install the release build on your connected device
+   ```bash
+   adb install android/app/build/outputs/apk/release/app-release.apk
+   ```
+
+   Alternatively, you can build and install in one step:
+   ```bash
+   cd android && ./gradlew installRelease
+   ```
+
+> **Note:** Production builds disable development features like hot reloading and developer menus, providing a more realistic end-user experience.
+
 ## Troubleshooting
 
 ### iOS Build Issues

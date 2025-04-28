@@ -34,14 +34,20 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
+  // Add state to track if the sheet is fully rendered and animated in
+  const [isFullyVisible, setIsFullyVisible] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
       loadWallets();
       setIsRendered(true);
       opacity.value = withTiming(1);
-      translateY.value = withSpring(0, SPRING_CONFIG);
+      translateY.value = withSpring(0, SPRING_CONFIG, () => {
+        // Mark as fully visible after animation completes
+        runOnJS(setIsFullyVisible)(true);
+      });
     } else {
+      setIsFullyVisible(false);
       opacity.value = withTiming(0, undefined, (finished) => {
         if (finished) {
           runOnJS(setIsRendered)(false);
@@ -58,8 +64,20 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
   };
 
   const handleConnect = () => {
-    if (selectedWallet) {
+    if (selectedWallet && isFullyVisible) {
       onConnect(selectedWallet);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isFullyVisible) {
+      onCancel();
+    }
+  };
+
+  const handleClose = () => {
+    if (isFullyVisible) {
+      onClose();
     }
   };
 
@@ -83,7 +101,7 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
           { backgroundColor: 'rgba(0,0,0,0.5)' },
           overlayStyle,
         ]}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleClose} activeOpacity={1} />
       </Animated.View>
       <Animated.View
         style={[
@@ -102,7 +120,7 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
           Select a wallet to connect to this website
         </ThemedText>
         
-        <ScrollView style={styles.walletList}>
+        <ScrollView style={styles.walletList} keyboardShouldPersistTaps="handled">
           {wallets.map((wallet, index) => (
             <TouchableOpacity
               key={index}
@@ -138,7 +156,7 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, styles.cancelButton]}
-          onPress={onCancel}
+          onPress={handleCancel}
           activeOpacity={0.8}>
           <ThemedText style={styles.buttonText}>Cancel</ThemedText>
         </TouchableOpacity>
