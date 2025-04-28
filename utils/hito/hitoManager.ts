@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { Transaction, serializeTransaction, parseTransaction } from 'viem';
 
 // Conditionally import NFC manager
 let NfcManager: any = null;
@@ -28,8 +29,8 @@ export class HitoManager {
    * @param address Wallet address
    * @returns Formatted transaction object for Hito
    */
-  formatTransaction(tx: any, address: string) {
-    console.log('Formatting transaction for Hito:', JSON.stringify(tx));
+  formatTransaction(tx: Transaction, address: string) {
+    // console.log('Formatting transaction for Hito:', JSON.stringify(tx));
     
     // Format transaction as per Hito requirements
     const formattedTx = {
@@ -38,14 +39,14 @@ export class HitoManager {
       value: tx.value || '0x0',
       data: tx.data || '0x',
       nonce: tx.nonce,
-      gasLimit: tx.gasLimit || tx.gas, // Handle both formats
-      gasPrice: tx.gasPrice,
-      type: tx.type || '0x0', // EIP-1559 support
-      maxFeePerGas: tx.maxFeePerGas,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+      gasLimit: '0x' + tx.gas.toString(16),
+      gasPrice: tx.gasPrice !== undefined ? '0x' + tx.gasPrice?.toString(16) : undefined,
+      type: tx.type === 'eip1559' ? 2 : 0,
+      maxFeePerGas: tx.maxFeePerGas !== undefined ? '0x' + tx.maxFeePerGas.toString(16) : undefined,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas !== undefined ? '0x' + tx.maxPriorityFeePerGas.toString(16) : undefined,
       chainId: tx.chainId,
     };
-    
+
     // Log formatted transaction for debugging
     console.log('Formatted transaction:', JSON.stringify(formattedTx));
     
@@ -57,7 +58,7 @@ export class HitoManager {
    * @param tx Formatted transaction object
    * @returns Promise resolving to true if successful
    */
-  async writeTransactionToNFC(tx: any): Promise<boolean> {
+  async writeTransactionToNFC(tx: Transaction): Promise<boolean> {
     if (!NfcManager) {
       console.log('NFC not available in this environment');
       return false;
@@ -69,46 +70,28 @@ export class HitoManager {
       // Initialize NFC
       await NfcManager.requestTechnology(NfcTech.Ndef);
       
-      // Format the transaction as per Hito requirements
-      // The payload should be in the format: evm.sign:{walletAddress}:{txUnsignedHex}
-      let txUnsignedHex = tx.unsignedTx || tx.data;
+      // Serialize (RLP encode) the transaction
+      const txUnsignedHex = serializeTransaction(tx);
+      console.log('RLP encoded transaction:', tx, txUnsignedHex);
+
+      // TODO fix tx signature
       
-      // Ensure transaction hex starts with 0x
-      if (!txUnsignedHex || !txUnsignedHex.startsWith('0x')) {
-        console.log('Transaction hex is missing or improperly formatted, sending as JSON instead');
-        // Fall back to JSON if we don't have proper hex
-        const txJson = JSON.stringify(tx);
-        console.log('Sending transaction to Hito as JSON:', txJson);
-        
-        const bytes = Ndef.encodeMessage([
-          Ndef.textRecord(txJson)
-        ]);
-        
-        if (bytes) {
-          await NfcManager.ndefHandler.writeNdefMessage(bytes);
-          console.log('Transaction data sent to Hito successfully');
-          return true;
-        } else {
-          throw new Error('Failed to encode NDEF message');
-        }
+      // Create the payload string in the format expected by Hito
+      const payload = `evm.sign:${tx.from.toLowerCase()}:${txUnsignedHex}`;
+      
+      console.log('Sending transaction to Hito:', payload);
+      
+      // Create NDEF message
+      const bytes = Ndef.encodeMessage([
+        Ndef.textRecord(payload)
+      ]);
+      
+      if (bytes) {
+        await NfcManager.ndefHandler.writeNdefMessage(bytes);
+        console.log('Transaction data sent to Hito successfully');
+        return true;
       } else {
-        // Create the payload string in the format expected by Hito
-        const payload = `evm.sign:${tx.from}:${txUnsignedHex}`;
-        
-        console.log('Sending transaction to Hito:', payload);
-        
-        // Create NDEF message
-        const bytes = Ndef.encodeMessage([
-          Ndef.textRecord(payload)
-        ]);
-        
-        if (bytes) {
-          await NfcManager.ndefHandler.writeNdefMessage(bytes);
-          console.log('Transaction data sent to Hito successfully');
-          return true;
-        } else {
-          throw new Error('Failed to encode NDEF message');
-        }
+        throw new Error('Failed to encode NDEF message');
       }
     } catch (error) {
       console.error('Error writing to NFC:', error);
@@ -302,14 +285,5 @@ export class HitoManager {
         message: `Error checking NFC support: ${error.message}` 
       };
     }
-  }
-
-  /**
-   * Simulate NFC for development environments without NFC support
-   * @returns Boolean indicating success
-   */
-  static async simulateNFC(): Promise<boolean> {
-    console.log('Using simulated NFC in development environment');
-    return Promise.resolve(true);
   }
 }

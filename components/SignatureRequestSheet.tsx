@@ -283,10 +283,8 @@ export function SignatureRequestSheet({
           style={[
             styles.button,
             styles.cancelButton,
-            isLoading && styles.disabledButton,
           ]}
-          onPress={!isLoading ? onClose : undefined}
-          disabled={isLoading}
+          onPress={onClose}
           activeOpacity={0.8}>
           <ThemedText style={styles.buttonText}>Cancel</ThemedText>
         </TouchableOpacity>

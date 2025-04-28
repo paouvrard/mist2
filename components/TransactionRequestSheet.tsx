@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -20,6 +20,7 @@ import { Wallet } from '@/utils/walletStorage';
 import { wagmiConfig } from '@/app/_layout';
 import { HitoManager } from '@/utils/hito/hitoManager';
 import { QRScannerSheet } from './QRScannerSheet';
+import { populateTransactionFields, formatTransactionForDisplay } from '@/utils/transactionUtils';
 
 interface Props {
   isVisible: boolean;
@@ -49,11 +50,44 @@ export function TransactionRequestSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  
+  const [populatingTransaction, setPopulatingTransaction] = useState(false);
+  const [populatedTransaction, setPopulatedTransaction] = useState<Partial<Transaction>>(transaction);
+  const [populationError, setPopulationError] = useState<string | null>(null);
+  
+  const formattedTx = useMemo(() => {
+    return formatTransactionForDisplay(populatedTransaction);
+  }, [populatedTransaction]);
+  
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
   const { open } = useAppKit();
   const { address } = useAccount();
   const hitoManager = new HitoManager();
+
+  useEffect(() => {
+    if (isVisible) {
+      populateTransactionData();
+    }
+  }, [isVisible, transaction, currentChainId]);
+
+  const populateTransactionData = async () => {
+    if (!isVisible) return;
+    
+    setPopulatingTransaction(true);
+    setPopulationError(null);
+    
+    try {
+      const populated = await populateTransactionFields(transaction, currentChainId);
+      setPopulatedTransaction(populated);
+    } catch (err) {
+      console.error('Failed to populate transaction:', err);
+      setPopulationError('Failed to load complete transaction details');
+      setPopulatedTransaction(transaction);
+    } finally {
+      setPopulatingTransaction(false);
+    }
+  };
 
   useEffect(() => {
     if (isVisible) {
@@ -67,6 +101,7 @@ export function TransactionRequestSheet({
           runOnJS(setError)(null);
           runOnJS(setIsLoading)(false);
           runOnJS(setShowQRScanner)(false);
+          runOnJS(setPopulationError)(null);
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
@@ -80,23 +115,20 @@ export function TransactionRequestSheet({
     setError(null);
     
     try {
-      // Handle different wallet types
+      const txToSend = populatedTransaction;
+
       if (currentWallet.type === 'hito') {
-        console.log('Sending transaction to Hito wallet for signing:', transaction);
+        console.log('Sending transaction to Hito wallet for signing:', txToSend);
         
-        // Check NFC support
         const nfcStatus = await HitoManager.checkNFCSupport();
         if (!nfcStatus.isSupported) {
           throw new Error(nfcStatus.message || 'NFC is required and not available');
         }
         
-        // Format transaction for Hito
-        const formattedTx = hitoManager.formatTransaction(transaction, currentWallet.address);
+        // const formattedTx = hitoManager.formatTransaction(txToSend, currentWallet.address);
         
-        // Send transaction to Hito via NFC
-        await hitoManager.writeTransactionToNFC(formattedTx);
+        await hitoManager.writeTransactionToNFC(txToSend);
         
-        // Show alert and prepare to scan QR code for signature
         Alert.alert(
           'Transaction Sent to Hito',
           'Please sign the transaction on your Hito device, then scan the QR code with the signature.',
@@ -105,14 +137,11 @@ export function TransactionRequestSheet({
           ]
         );
         
-        // We'll continue the transaction process when QR is scanned
         setIsLoading(false);
       } else if (currentWallet.type === 'wallet-connect') {
         await switchChain(wagmiConfig, { chainId: currentChainId });
-        // Send the transaction
-        const hash = await sendTransaction(wagmiConfig, transaction);
+        const hash = await sendTransaction(wagmiConfig, txToSend);
         
-        // Call onSuccess with the transaction hash before closing
         if (onSuccess) {
           onSuccess(hash);
         }
@@ -122,10 +151,8 @@ export function TransactionRequestSheet({
         throw new Error('View-only wallets cannot send transactions');
       } else {
         await switchChain(wagmiConfig, { chainId: currentChainId });
-        // Send the transaction
-        const hash = await sendTransaction(wagmiConfig, transaction);
+        const hash = await sendTransaction(wagmiConfig, txToSend);
         
-        // Call onSuccess with the transaction hash before closing
         if (onSuccess) {
           onSuccess(hash);
         }
@@ -155,16 +182,15 @@ export function TransactionRequestSheet({
     }
   };
   
-  // Handle signature from QR scanner for Hito wallet
   const handleSignatureScanned = async (signatureData: string) => {
     console.log('Transaction signature received from QR code:', signatureData);
     
     try {
       setIsLoading(true);
       
-      // Process the signature
       const signedTx = hitoManager.processScannedSignature(signatureData);
       console.log('Processed signed transaction:', signedTx);
+      throw "TODO broadcast the signed transaction";
       const txHash = ""
       
       if (onSuccess) {
@@ -221,25 +247,95 @@ export function TransactionRequestSheet({
         </ThemedText>
 
         <View style={styles.detailsContainer}>
-          {transaction.to && (
-            <View style={styles.detailRow}>
-              <ThemedText style={styles.detailLabel}>To:</ThemedText>
-              <ThemedText style={styles.detailValue}>{transaction.to}</ThemedText>
+          {populatingTransaction ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#0a7ea4" />
+              <ThemedText style={styles.loadingText}>Loading transaction details...</ThemedText>
             </View>
-          )}
-          {transaction.value && (
-            <View style={styles.detailRow}>
-              <ThemedText style={styles.detailLabel}>Value:</ThemedText>
-              <ThemedText style={styles.detailValue}>
-                {transaction.value.toString()} Wei
-              </ThemedText>
+          ) : populationError ? (
+            <View style={styles.errorContainer}>
+              <ThemedText style={styles.errorText}>{populationError}</ThemedText>
+              <ThemedText style={styles.errorSubtext}>Showing partial transaction details.</ThemedText>
             </View>
-          )}
-          {transaction.data && (
-            <View style={styles.detailRow}>
-              <ThemedText style={styles.detailLabel}>Data:</ThemedText>
-              <ThemedText style={styles.detailValue}>{transaction.data}</ThemedText>
-            </View>
+          ) : (
+            <>
+              {formattedTx.to && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>To:</ThemedText>
+                  <ThemedText style={styles.detailValue}>{formattedTx.to}</ThemedText>
+                </View>
+              )}
+              {formattedTx.value && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Value:</ThemedText>
+                  <ThemedText style={styles.detailValue}>
+                    {formattedTx.value} ETH
+                  </ThemedText>
+                </View>
+              )}
+              {formattedTx.data && formattedTx.data !== '0x' && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Data:</ThemedText>
+                  <ThemedText style={[styles.detailValue, styles.dataText]} numberOfLines={3} ellipsizeMode="middle">
+                    {formattedTx.data}
+                  </ThemedText>
+                </View>
+              )}
+              {formattedTx.type && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Type:</ThemedText>
+                  <ThemedText style={styles.detailValue}>{formattedTx.type}</ThemedText>
+                </View>
+              )}
+              {formattedTx.chainId && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Chain ID:</ThemedText>
+                  <ThemedText style={styles.detailValue}>{formattedTx.chainId}</ThemedText>
+                </View>
+              )}
+              {/* Display either EIP-1559 fee fields or legacy gasPrice based on transaction type */}
+              {formattedTx.type === 'legacy' ? (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Gas Price:</ThemedText>
+                  <ThemedText style={styles.detailValue}>
+                    {formattedTx.gasPrice || 'Not available'} Gwei
+                  </ThemedText>
+                </View>
+              ) : (
+                <>
+                  {formattedTx.maxFeePerGas && (
+                    <View style={styles.detailRow}>
+                      <ThemedText style={styles.detailLabel}>Max Fee:</ThemedText>
+                      <ThemedText style={styles.detailValue}>
+                        {formattedTx.maxFeePerGas} Gwei
+                      </ThemedText>
+                    </View>
+                  )}
+                  {formattedTx.maxPriorityFeePerGas && (
+                    <View style={styles.detailRow}>
+                      <ThemedText style={styles.detailLabel}>Priority Fee:</ThemedText>
+                      <ThemedText style={styles.detailValue}>
+                        {formattedTx.maxPriorityFeePerGas} Gwei
+                      </ThemedText>
+                    </View>
+                  )}
+                </>
+              )}
+              
+              {formattedTx.gas && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Gas Limit:</ThemedText>
+                  <ThemedText style={styles.detailValue}>{formattedTx.gas}</ThemedText>
+                </View>
+              )}
+              
+              {formattedTx.nonce !== undefined && (
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Nonce:</ThemedText>
+                  <ThemedText style={styles.detailValue}>{formattedTx.nonce}</ThemedText>
+                </View>
+              )}
+            </>
           )}
         </View>
 
@@ -286,10 +382,10 @@ export function TransactionRequestSheet({
             style={[
               styles.button,
               styles.approveButton,
-              (isLoading || isViewOnly) && styles.disabledButton,
+              (isLoading || populatingTransaction || isViewOnly) && styles.disabledButton,
             ]}
             onPress={handleApprove}
-            disabled={isLoading || isViewOnly}
+            disabled={isLoading || populatingTransaction || isViewOnly}
             activeOpacity={0.8}>
             <ThemedText style={styles.buttonText}>
               {isLoading ? 'Sending...' : 'Approve'}
@@ -302,13 +398,13 @@ export function TransactionRequestSheet({
             style={[
               styles.button,
               styles.approveButton,
-              isLoading && styles.disabledButton,
+              (isLoading || populatingTransaction) && styles.disabledButton,
             ]}
             onPress={handleApprove}
-            disabled={isLoading}
+            disabled={isLoading || populatingTransaction}
             activeOpacity={0.8}>
             <ThemedText style={styles.buttonText}>
-              {isLoading ? 'Preparing...' : 'Sign with Hito'}
+              {isLoading ? 'Preparing...' : populatingTransaction ? 'Loading...' : 'Sign with Hito'}
             </ThemedText>
           </TouchableOpacity>
         )}
@@ -317,16 +413,13 @@ export function TransactionRequestSheet({
           style={[
             styles.button,
             styles.cancelButton,
-            isLoading && styles.disabledButton,
           ]}
-          onPress={!isLoading ? onClose : undefined}
-          disabled={isLoading}
+          onPress={onClose}
           activeOpacity={0.8}>
           <ThemedText style={styles.buttonText}>Cancel</ThemedText>
         </TouchableOpacity>
       </Animated.View>
       
-      {/* QR Scanner for Hito signature */}
       <QRScannerSheet
         isVisible={showQRScanner}
         onClose={() => setShowQRScanner(false)}
@@ -391,6 +484,30 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 14,
     opacity: 0.9,
+  },
+  dataText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 8,
+    opacity: 0.7,
+  },
+  errorContainer: {
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#dc3545',
+    marginBottom: 4,
+  },
+  errorSubtext: {
+    opacity: 0.7,
+    fontSize: 12,
   },
   warning: {
     color: '#dc3545',

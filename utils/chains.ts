@@ -1,4 +1,5 @@
 import { mainnet, goerli, polygon, optimism, arbitrum, gnosis, base, zksync, aurora } from "wagmi/chains";
+import { createPublicClient, http } from 'viem';
 
 export const chains = [
   mainnet,
@@ -20,4 +21,37 @@ export function getRpcUrl(chainId: number): string {
   const chain = chains.find(chain => chain.id === chainId);
   // Use the first RPC URL from the chain definition, or fallback to mainnet
   return chain?.rpcUrls.default.http[0] || mainnet.rpcUrls.default.http[0];
+}
+
+/**
+ * Get a viem public client (provider) for the specified chain
+ * @param chainId - The chain ID
+ * @returns A viem public client for the chain, or undefined if chain is not supported
+ */
+export function getProvider(chainId: number) {
+  const chain = chains.find(chain => chain.id === chainId);
+  
+  if (!chain) {
+    console.warn(`No chain configuration found for chainId ${chainId}`);
+    return undefined;
+  }
+
+  try {
+    return createPublicClient({
+      chain,
+      transport: http(),
+    });
+  } catch (error) {
+    console.error(`Failed to create provider for chainId ${chainId}:`, error);
+    return undefined;
+  }
+}
+
+/**
+ * Check if a chainId is supported
+ * @param chainId - The chain ID to check
+ * @returns True if the chain is supported, false otherwise
+ */
+export function isChainSupported(chainId: number): boolean {
+  return chains.some(chain => chain.id === chainId);
 }
