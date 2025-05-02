@@ -32,8 +32,9 @@ const INFURA_ID = '8245495f0d1247d18e83e5f491b75c88'
 
 /**
  * Returns the JavaScript code that injects the Ethereum provider into the WebView
+ * @param instanceId Optional unique identifier for the WebView instance to support multiple providers
  */
-export const getEthereumProvider = (): string => {
+export const getEthereumProvider = (instanceId: string = 'default'): string => {
   return `
     (function() {
       // Console logging bridge
@@ -98,7 +99,7 @@ export const getEthereumProvider = (): string => {
       };
 
       const providerInfo = {
-        uuid: 'mist2-mobile-' + Math.random().toString(36).slice(2),
+        uuid: 'mist2-mobile-${instanceId}-' + Math.random().toString(36).slice(2),
         name: 'Mist2 Mobile',
         icon: '', // TODO: Add icon URL
         rdns: 'app.mist2'
@@ -112,6 +113,7 @@ export const getEthereumProvider = (): string => {
         _address: null,
         _chainId: '0x1', // Default to Ethereum mainnet
         _chainStates: {}, // Store chain state per origin
+        _instanceId: '${instanceId}', // Track instance ID for multi-app support
         
         request: async function(request) {
           const id = this._nextId++;
@@ -134,6 +136,7 @@ export const getEthereumProvider = (): string => {
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'ethereum_request',
               id: id,
+              instanceId: this._instanceId,
               payload: request
             }));
           });

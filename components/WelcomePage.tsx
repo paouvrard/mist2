@@ -6,19 +6,13 @@ import { ThemedView } from './ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface WelcomePageProps {
-  onNavigate: (url: string) => void;
+  favoriteApps: Array<{ id: string; name: string; url: string }>;
+  onAppSelect: (appId: string) => void;
 }
 
-export function WelcomePage({ onNavigate }: WelcomePageProps) {
+export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
   const backgroundColor = useThemeColor({}, 'background');
   const insets = useSafeAreaInsets();
-
-  const favorites = [
-    { name: 'Uniswap', url: 'https://app.uniswap.org' },
-    { name: 'Aave', url: 'https://app.aave.com' },
-    { name: 'Rainbow Bridge', url: 'https://rainbowbridge.app' },
-    { name: 'Rarible', url: 'https://rarible.com' },
-  ];
 
   return (
     <ThemedView style={[styles.container, { backgroundColor }]}>
@@ -31,11 +25,11 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
         <ThemedText type="title" style={styles.title}>Welcome</ThemedText>
         <ThemedText style={styles.subtitle}>Your Favorite dApps</ThemedText>
         <View style={styles.grid}>
-          {favorites.map((app) => (
+          {favoriteApps.map((app) => (
             <TouchableOpacity
-              key={app.url}
+              key={app.id}
               style={styles.appButton}
-              onPress={() => onNavigate(app.url)}>
+              onPress={() => onAppSelect(app.id)}>
               <ThemedText style={styles.appButtonText}>{app.name}</ThemedText>
             </TouchableOpacity>
           ))}
