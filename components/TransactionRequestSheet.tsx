@@ -12,6 +12,7 @@ import { sendTransaction, switchChain } from '@wagmi/core';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
 import type { Transaction } from 'viem';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
@@ -60,7 +61,7 @@ export function TransactionRequestSheet({
   }, [populatedTransaction]);
   
   const insets = useSafeAreaInsets();
-  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
   const { open } = useAppKit();
   const { address } = useAccount();
   const hitoManager = new HitoManager();
@@ -115,19 +116,15 @@ export function TransactionRequestSheet({
     setError(null);
     
     try {
-      const txToSend = populatedTransaction;
-
       if (currentWallet.type === 'hito') {
-        console.log('Sending transaction to Hito wallet for signing:', txToSend);
+        console.log('Sending transaction to Hito wallet for signing:', populatedTransaction);
         
         const nfcStatus = await HitoManager.checkNFCSupport();
         if (!nfcStatus.isSupported) {
           throw new Error(nfcStatus.message || 'NFC is required and not available');
         }
         
-        // const formattedTx = hitoManager.formatTransaction(txToSend, currentWallet.address);
-        
-        await hitoManager.writeTransactionToNFC(txToSend);
+        await hitoManager.writeTransactionToNFC(populatedTransaction);
         
         Alert.alert(
           'Transaction Sent to Hito',
@@ -140,7 +137,7 @@ export function TransactionRequestSheet({
         setIsLoading(false);
       } else if (currentWallet.type === 'wallet-connect') {
         await switchChain(wagmiConfig, { chainId: currentChainId });
-        const hash = await sendTransaction(wagmiConfig, txToSend);
+        const hash = await sendTransaction(wagmiConfig, populatedTransaction);
         
         if (onSuccess) {
           onSuccess(hash);
@@ -150,14 +147,7 @@ export function TransactionRequestSheet({
       } else if (currentWallet.type === 'view-only') {
         throw new Error('View-only wallets cannot send transactions');
       } else {
-        await switchChain(wagmiConfig, { chainId: currentChainId });
-        const hash = await sendTransaction(wagmiConfig, txToSend);
-        
-        if (onSuccess) {
-          onSuccess(hash);
-        }
-        
-        onClose();
+        throw new Error('Unsupported wallet type');
       }
     } catch (err) {
       console.error('Transaction error:', err);
@@ -236,188 +226,189 @@ export function TransactionRequestSheet({
         style={[
           styles.sheet,
           {
-            backgroundColor,
-            paddingBottom: insets.bottom + 65,
+            backgroundColor: '#2a2a2a',
+            paddingBottom: insets.bottom + 25,
           },
           sheetStyle,
         ]}>
-        <ThemedView style={styles.handle} />
-        <ThemedText type="title" style={styles.title}>
-          Transaction Request
-        </ThemedText>
+        {/* Windows 95 title bar */}
+        <View style={styles.titleBar}>
+          <ThemedText type="title" style={styles.titleText}>
+            Transaction Request
+          </ThemedText>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Ionicons name="close" size={16} color={textColor} />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.content}>
+          <View style={styles.detailsContainer}>
+            {populatingTransaction ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#0a7a8c" />
+                <ThemedText style={styles.loadingText}>Loading transaction details...</ThemedText>
+              </View>
+            ) : populationError ? (
+              <View style={styles.errorContainer}>
+                <ThemedText style={styles.errorText}>{populationError}</ThemedText>
+                <ThemedText style={styles.errorSubtext}>Showing partial transaction details.</ThemedText>
+              </View>
+            ) : (
+              <>
+                {formattedTx.to && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>To:</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formattedTx.to}</ThemedText>
+                  </View>
+                )}
+                {formattedTx.value && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Value:</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {formattedTx.value} ETH
+                    </ThemedText>
+                  </View>
+                )}
+                {formattedTx.data && formattedTx.data !== '0x' && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Data:</ThemedText>
+                    <ThemedText style={[styles.detailValue, styles.dataText]} numberOfLines={3} ellipsizeMode="middle">
+                      {formattedTx.data}
+                    </ThemedText>
+                  </View>
+                )}
+                {formattedTx.type && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Type:</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formattedTx.type}</ThemedText>
+                  </View>
+                )}
+                {formattedTx.chainId && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Chain ID:</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formattedTx.chainId}</ThemedText>
+                  </View>
+                )}
+                {formattedTx.type === 'legacy' ? (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Gas Price:</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {formattedTx.gasPrice || 'Not available'} Gwei
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <>
+                    {formattedTx.maxFeePerGas && (
+                      <View style={styles.detailRow}>
+                        <ThemedText style={styles.detailLabel}>Max Fee:</ThemedText>
+                        <ThemedText style={styles.detailValue}>
+                          {formattedTx.maxFeePerGas} Gwei
+                        </ThemedText>
+                      </View>
+                    )}
+                    {formattedTx.maxPriorityFeePerGas && (
+                      <View style={styles.detailRow}>
+                        <ThemedText style={styles.detailLabel}>Priority Fee:</ThemedText>
+                        <ThemedText style={styles.detailValue}>
+                          {formattedTx.maxPriorityFeePerGas} Gwei
+                        </ThemedText>
+                      </View>
+                    )}
+                  </>
+                )}
+                
+                {formattedTx.gas && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Gas Limit:</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formattedTx.gas}</ThemedText>
+                  </View>
+                )}
+                
+                {formattedTx.nonce !== undefined && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Nonce:</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formattedTx.nonce}</ThemedText>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
 
-        <View style={styles.detailsContainer}>
-          {populatingTransaction ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#0a7ea4" />
-              <ThemedText style={styles.loadingText}>Loading transaction details...</ThemedText>
-            </View>
-          ) : populationError ? (
-            <View style={styles.errorContainer}>
-              <ThemedText style={styles.errorText}>{populationError}</ThemedText>
-              <ThemedText style={styles.errorSubtext}>Showing partial transaction details.</ThemedText>
-            </View>
-          ) : (
+          {error && (
+            <ThemedText style={styles.error}>{error}</ThemedText>
+          )}
+
+          {isViewOnly && (
+            <ThemedText style={styles.warning}>
+              View-only wallet cannot approve the request
+            </ThemedText>
+          )}
+
+          {isWalletConnect && !address && (
             <>
-              {formattedTx.to && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>To:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{formattedTx.to}</ThemedText>
-                </View>
-              )}
-              {formattedTx.value && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Value:</ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {formattedTx.value} ETH
-                  </ThemedText>
-                </View>
-              )}
-              {formattedTx.data && formattedTx.data !== '0x' && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Data:</ThemedText>
-                  <ThemedText style={[styles.detailValue, styles.dataText]} numberOfLines={3} ellipsizeMode="middle">
-                    {formattedTx.data}
-                  </ThemedText>
-                </View>
-              )}
-              {formattedTx.type && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Type:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{formattedTx.type}</ThemedText>
-                </View>
-              )}
-              {formattedTx.chainId && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Chain ID:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{formattedTx.chainId}</ThemedText>
-                </View>
-              )}
-              {/* Display either EIP-1559 fee fields or legacy gasPrice based on transaction type */}
-              {formattedTx.type === 'legacy' ? (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Gas Price:</ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {formattedTx.gasPrice || 'Not available'} Gwei
-                  </ThemedText>
-                </View>
-              ) : (
-                <>
-                  {formattedTx.maxFeePerGas && (
-                    <View style={styles.detailRow}>
-                      <ThemedText style={styles.detailLabel}>Max Fee:</ThemedText>
-                      <ThemedText style={styles.detailValue}>
-                        {formattedTx.maxFeePerGas} Gwei
-                      </ThemedText>
-                    </View>
-                  )}
-                  {formattedTx.maxPriorityFeePerGas && (
-                    <View style={styles.detailRow}>
-                      <ThemedText style={styles.detailLabel}>Priority Fee:</ThemedText>
-                      <ThemedText style={styles.detailValue}>
-                        {formattedTx.maxPriorityFeePerGas} Gwei
-                      </ThemedText>
-                    </View>
-                  )}
-                </>
-              )}
-              
-              {formattedTx.gas && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Gas Limit:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{formattedTx.gas}</ThemedText>
-                </View>
-              )}
-              
-              {formattedTx.nonce !== undefined && (
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Nonce:</ThemedText>
-                  <ThemedText style={styles.detailValue}>{formattedTx.nonce}</ThemedText>
-                </View>
-              )}
+              <ThemedText style={styles.description}>
+                No wallet connected. Connect a wallet to approve this request.
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleConnect}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>Connect Wallet</ThemedText>
+              </TouchableOpacity>
             </>
           )}
+
+          {isWalletConnect && address && !accountMatches && (
+            <>
+              <ThemedText style={styles.description}>
+                The account is not connected, switch account from the wallet or reconnect
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleConnect}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>Reconnect</ThemedText>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {isWalletConnect && accountMatches && (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (isLoading || populatingTransaction || isViewOnly) && styles.disabledButton,
+              ]}
+              onPress={handleApprove}
+              disabled={isLoading || populatingTransaction || isViewOnly}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>
+                {isLoading ? 'Sending...' : 'Approve'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+          
+          {isHito && (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (isLoading || populatingTransaction) && styles.disabledButton,
+              ]}
+              onPress={handleApprove}
+              disabled={isLoading || populatingTransaction}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.buttonText}>
+                {isLoading ? 'Preparing...' : populatingTransaction ? 'Loading...' : 'Sign with Hito'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={onClose}
+            activeOpacity={0.8}>
+            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+          </TouchableOpacity>
         </View>
-
-        {error && (
-          <ThemedText style={styles.error}>{error}</ThemedText>
-        )}
-
-        {isViewOnly && (
-          <ThemedText style={styles.warning}>
-            View-only wallet cannot approve the request
-          </ThemedText>
-        )}
-
-        {isWalletConnect && !address && (
-          <>
-            <ThemedText style={styles.description}>
-              No wallet connected. Connect a wallet to approve this request.
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.button, styles.connectButton]}
-              onPress={handleConnect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>Connect Wallet</ThemedText>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {isWalletConnect && address && !accountMatches && (
-          <>
-            <ThemedText style={styles.description}>
-              The account is not connected, switch account from the wallet or reconnect
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.button, styles.connectButton]}
-              onPress={handleConnect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>Reconnect</ThemedText>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {isWalletConnect && accountMatches && (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.approveButton,
-              (isLoading || populatingTransaction || isViewOnly) && styles.disabledButton,
-            ]}
-            onPress={handleApprove}
-            disabled={isLoading || populatingTransaction || isViewOnly}
-            activeOpacity={0.8}>
-            <ThemedText style={styles.buttonText}>
-              {isLoading ? 'Sending...' : 'Approve'}
-            </ThemedText>
-          </TouchableOpacity>
-        )}
-        
-        {isHito && (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.approveButton,
-              (isLoading || populatingTransaction) && styles.disabledButton,
-            ]}
-            onPress={handleApprove}
-            disabled={isLoading || populatingTransaction}
-            activeOpacity={0.8}>
-            <ThemedText style={styles.buttonText}>
-              {isLoading ? 'Preparing...' : populatingTransaction ? 'Loading...' : 'Sign with Hito'}
-            </ThemedText>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.cancelButton,
-          ]}
-          onPress={onClose}
-          activeOpacity={0.8}>
-          <ThemedText style={styles.buttonText}>Cancel</ThemedText>
-        </TouchableOpacity>
       </Animated.View>
       
       <QRScannerSheet
@@ -437,10 +428,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
-    gap: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#666666',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -450,40 +443,72 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#999',
-    alignSelf: 'center',
-    marginBottom: 8,
+  titleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0a7a8c',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
-  title: {
-    textAlign: 'center',
-    marginBottom: 16,
+  titleText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'SpaceMono-Regular',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  closeButton: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#c0c0c0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#ffffff',
+    borderLeftColor: '#ffffff',
+    borderBottomColor: '#555555',
+    borderRightColor: '#555555',
+  },
+  content: {
+    padding: 16,
+    gap: 16,
   },
   description: {
     textAlign: 'center',
     marginBottom: 16,
-    opacity: 0.7,
+    color: '#e8e8e8',
   },
   detailsContainer: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: '#3a3a3a',
     padding: 16,
-    borderRadius: 12,
     marginBottom: 16,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#333333',
+    borderLeftColor: '#333333',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
   detailRow: {
     marginBottom: 8,
   },
   detailLabel: {
     fontSize: 14,
-    opacity: 0.7,
+    color: '#b8b8b8',
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 14,
-    opacity: 0.9,
+    color: '#e8e8e8',
   },
   dataText: {
     fontFamily: 'monospace',
@@ -496,45 +521,49 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
-    opacity: 0.7,
+    color: '#b8b8b8',
   },
   errorContainer: {
     marginBottom: 8,
   },
   errorText: {
-    color: '#dc3545',
+    color: '#ff6b6b',
     marginBottom: 4,
   },
   errorSubtext: {
-    opacity: 0.7,
+    color: '#b8b8b8',
     fontSize: 12,
   },
   warning: {
-    color: '#dc3545',
+    color: '#ff6b6b',
     textAlign: 'center',
     marginBottom: 16,
   },
   error: {
-    color: '#dc3545',
+    color: '#ff6b6b',
     textAlign: 'center',
     marginBottom: 16,
   },
   button: {
     padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
-  },
-  approveButton: {
-    backgroundColor: '#28a745',
-  },
-  connectButton: {
-    backgroundColor: '#0a7ea4',
-  },
-  cancelButton: {
-    backgroundColor: '#687076',
+    backgroundColor: '#555555',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+    marginBottom: 12,
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: '#444444',
+    borderTopColor: '#666666',
+    borderLeftColor: '#666666',
+    borderBottomColor: '#333333',
+    borderRightColor: '#333333',
   },
   buttonText: {
     color: '#fff',

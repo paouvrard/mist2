@@ -1,9 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface WelcomePageProps {
   favoriteApps: Array<{ id: string; name: string; url: string }>;
@@ -11,19 +10,18 @@ interface WelcomePageProps {
 }
 
 export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
-  const backgroundColor = useThemeColor({}, 'background');
   const insets = useSafeAreaInsets();
+  
+  // Calculate proper top padding based on platform, matching index page
+  const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor }]}>
-      <View style={[styles.content, { 
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-      }]}>
-        <ThemedText type="title" style={styles.title}>Welcome</ThemedText>
-        <ThemedText style={styles.subtitle}>Your Favorite dApps</ThemedText>
+    <ThemedView style={styles.container}>
+      <View style={[styles.titleContainer, { marginTop: titleTopPadding }]}>
+        <ThemedText style={styles.titleText}>APPS</ThemedText>
+      </View>
+      
+      <View style={styles.contentContainer}>
         <View style={styles.grid}>
           {favoriteApps.map((app) => (
             <TouchableOpacity
@@ -42,32 +40,54 @@ export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#2a2a2a', // Same dark background as index page
+    padding: 16,
   },
-  content: {
+  titleContainer: {
+    paddingHorizontal: 32,
+    paddingBottom: 16,
+  },
+  titleText: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: 'bold',
+    fontFamily: 'SpaceMono-Regular',
+    letterSpacing: 0.5,
+    height: 40,
+    lineHeight: 36,
+    textAlign: 'left',
+    textTransform: 'uppercase',
+  },
+  contentContainer: {
     flex: 1,
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 32,
-    marginBottom: 8,
+    padding: 8,
   },
   subtitle: {
     fontSize: 18,
+    color: '#e8e8e8',
     marginBottom: 24,
+    fontWeight: 'bold',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 16,
   },
   appButton: {
-    backgroundColor: '#0a7ea4',
+    backgroundColor: '#555555',
     padding: 16,
-    borderRadius: 12,
     minWidth: 150,
     alignItems: 'center',
+    marginBottom: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
   appButtonText: {
     color: '#fff',

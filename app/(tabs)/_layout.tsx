@@ -3,14 +3,10 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { TabVisibilityContext } from '@/hooks/useTabVisibility';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const [hideTabBar, setHideTabBar] = useState(false);
   const router = useRouter();
   const previousRoute = useRef('');
@@ -21,9 +17,9 @@ export default function TabLayout() {
     previousRoute.current = currentRoute.current;
     currentRoute.current = name;
 
-    // If we're switching from browser to index, we need to reset the browser screen
-    if (name === 'index' && previousRoute.current === 'browser') {
-      // Use the global event system to notify the browser to reset
+    // If we're switching from apps to index, we need to reset the apps screen
+    if (name === 'index' && previousRoute.current === 'apps') {
+      // Use the global event system to notify the apps to reset
       router.setParams({ resetWebView: 'true' });
     }
   }, [router]);
@@ -32,40 +28,45 @@ export default function TabLayout() {
     <TabVisibilityContext.Provider value={{ hideTabBar, setHideTabBar }}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
           headerShown: false,
-          tabBarButton: HapticTab,
-          tabBarBackground: TabBarBackground,
+          tabBarButton: (props) => <HapticTab {...props} />,
+          tabBarBackground: () => <TabBarBackground />,
           tabBarStyle: [
             styles.tabBar,
             Platform.select({
-              ios: {
-                backgroundColor: 'transparent',
-              },
+              ios: styles.iosTabBar,
+              android: styles.androidTabBar,
               default: {},
             }),
             hideTabBar && styles.hidden,
           ],
-          tabBarShowLabel: false, // Hide the text labels
+          tabBarShowLabel: true,
+          tabBarLabelStyle: [
+            styles.tabLabel,
+            Platform.OS === 'android' && styles.androidTabLabel,
+          ],
+          tabBarActiveTintColor: '#ECEDEE', // Always dark mode text color
+          tabBarInactiveTintColor: '#9BA1A6', // Always dark mode inactive color
+          tabBarIconStyle: { display: 'none' }, // Hide default icons
         }}>
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Wallets', // Keep title for accessibility
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="key.fill" color={color} />,
+            title: 'WALLETS',
+            tabBarLabel: 'WALLETS',
           }}
           listeners={{
             tabPress: () => handleTabPress('index')
           }}
         />
         <Tabs.Screen
-          name="browser"
+          name="apps"
           options={{
-            title: 'Browser', // Keep title for accessibility
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="safari.fill" color={color} />,
+            title: 'APPS',
+            tabBarLabel: 'APPS',
           }}
           listeners={{
-            tabPress: () => handleTabPress('browser')
+            tabPress: () => handleTabPress('apps')
           }}
         />
       </Tabs>
@@ -75,18 +76,34 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 50,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    elevation: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(0,0,0,0.3)',
-    elevation: 8,
-    justifyContent: 'center', // Center items vertically
-    paddingBottom: 0, // Remove default padding to ensure true centering
+  },
+  iosTabBar: {
+    height: 70, // Keep iOS tab bar at 70px
+    backgroundColor: 'transparent',
+  },
+  androidTabBar: {
+    height: 50, // Reduced height for Android
+    paddingBottom: 0,
+    paddingTop: 0,
   },
   hidden: {
     display: 'none',
+  },
+  tabLabel: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    letterSpacing: 1,
+    paddingBottom: 0,
+    margin: 0,
+  },
+  androidTabLabel: {
+    paddingTop: 2, // Reduced padding to match the smaller tab bar height
   },
 });

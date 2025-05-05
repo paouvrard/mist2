@@ -1,15 +1,16 @@
-import { mainnet, goerli, polygon, optimism, arbitrum, gnosis, base, zksync, aurora } from "wagmi/chains";
+import { mainnet, polygon, optimism, arbitrum, gnosis, base, aurora, auroraTestnet, sepolia } from "wagmi/chains";
 import { createPublicClient, http } from 'viem';
 
 export const chains = [
   mainnet,
-  goerli,
   polygon,
   optimism,
   arbitrum,
   gnosis,
   base,
-  aurora
+  aurora,
+  auroraTestnet,
+  sepolia,
 ] as const;
 
 /**

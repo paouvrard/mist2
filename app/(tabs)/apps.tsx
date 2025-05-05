@@ -22,7 +22,8 @@ import { Wallet } from '@/utils/walletStorage';
 const favoriteApps = [
   { id: 'uniswap', name: 'Uniswap', url: 'https://app.uniswap.org' },
   { id: 'aave', name: 'Aave', url: 'https://app.aave.com' },
-  { id: 'rainbow', name: 'Rainbow Bridge', url: 'https://rainbowbridge.app' },
+  { id: 'rainbow-bridge', name: 'Rainbow Bridge', url: 'https://rainbowbridge.app' },
+  { id: 'rainbow-bridge-testnet', name: 'Rainbow Bridge Testnet', url: 'https://testnet.rainbowbridge.app' },
   { id: 'opensea', name: 'OpenSea', url: 'https://opensea.io' },
   { id: 'lens', name: 'Lens', url: 'https://hey.xyz' },
   { id: 'rarible', name: 'Rarible', url: 'https://rarible.com' },
@@ -97,7 +98,7 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
   );
 });
 
-export default function BrowserScreen() {
+export default function AppsScreen() {
   // Track app instances and their states
   const [appInstances, setAppInstances] = useState<{ [key: string]: AppConnectionState }>({});
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
@@ -1056,19 +1057,19 @@ export default function BrowserScreen() {
           behavior={Platform.OS === 'ios' ? 'position' : undefined}
           style={styles.navigationBarContainer} 
           keyboardVerticalOffset={0}>
-          <View style={[styles.navigationBar, { backgroundColor: navBarBackgroundColor }]}>
+          <View style={[styles.navigationBar, { backgroundColor: '#2a2a2a' }]}>
             <TouchableOpacity 
               onPress={handleBackPress}
-              style={styles.button}>
-              <IconSymbol size={20} name="chevron.left" color={navBarTextColor} />
+              style={styles.navButton}>
+              <IconSymbol size={20} name="chevron.left" color="#ffffff" />
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={handleHomePress}
-              style={styles.button}>
-              <IconSymbol size={20} name="house.fill" color={navBarTextColor} />
+              style={styles.navButton}>
+              <IconSymbol size={20} name="house.fill" color="#ffffff" />
             </TouchableOpacity>
             <TextInput
-              style={[styles.input, { color: navBarTextColor }]}
+              style={styles.urlInput}
               value={currentUrl}
               onChangeText={setCurrentUrl}
               onSubmitEditing={() => goToUrl(currentUrl)}
@@ -1079,8 +1080,8 @@ export default function BrowserScreen() {
             />
             <TouchableOpacity 
               onPress={() => setIsWalletInfoSheetVisible(true)}
-              style={styles.button}>
-              <IconSymbol size={20} name="key.fill" color={navBarTextColor} />
+              style={styles.navButton}>
+              <IconSymbol size={20} name="key.fill" color="#ffffff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -1137,33 +1138,48 @@ const styles = StyleSheet.create({
   navigationBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.5)',
+    borderTopWidth: 2,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderTopColor: '#333333',
     height: 50,
-    ...Platform.select({
-      android: {
-        elevation: 4, // Add elevation on Android to create shadow effect
-      }
-    }),
   },
-  button: {
-    padding: 10,
+  navButton: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 40, // Ensure minimum touch target size
-    minHeight: 40, // Ensure minimum touch target size
+    backgroundColor: '#555555',
+    marginHorizontal: 4,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
-  input: {
+  urlInput: {
     flex: 1,
     height: 36,
-    marginHorizontal: 10,
+    marginHorizontal: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#444444', // Darker input field to match the dark theme
-    color: '#CCCCCC', // Light gray text for input
+    borderRadius: 0, // Square corners
+    backgroundColor: '#444444',
+    color: '#ffffff',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#333333',
+    borderLeftColor: '#333333',
+    borderBottomColor: '#666666',
+    borderRightColor: '#666666',
   },
   webviewWrapper: {
     position: 'absolute',

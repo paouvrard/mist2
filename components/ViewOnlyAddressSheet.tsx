@@ -7,8 +7,7 @@ import {
   Alert, 
   KeyboardAvoidingView, 
   Platform,
-  Keyboard,
-  Dimensions
+  Keyboard
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -19,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
@@ -36,12 +36,12 @@ const SPRING_CONFIG = {
 };
 
 export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
-  const backgroundColor = useThemeColor({}, 'background');
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const [address, setAddress] = useState('');
   const [isRendered, setIsRendered] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const textColor = useThemeColor({}, 'text');
 
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
@@ -59,13 +59,15 @@ export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
 
     if (isVisible) {
       setIsRendered(true);
-      opacity.value = withTiming(1, { duration: 150 });
+      opacity.value = withTiming(1);
       translateY.value = withSpring(0, SPRING_CONFIG);
     } else {
-      opacity.value = withTiming(0, { duration: 150 });
-      translateY.value = withSpring(1000, SPRING_CONFIG, () => {
-        runOnJS(setIsRendered)(false);
+      opacity.value = withTiming(0, undefined, (finished) => {
+        if (finished) {
+          runOnJS(setIsRendered)(false);
+        }
       });
+      translateY.value = withSpring(1000, SPRING_CONFIG);
     }
 
     return () => {
@@ -124,29 +126,34 @@ export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
       </Animated.View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'position' : undefined}
-        style={[
-          styles.keyboardAvoidingView,
-          { 
-            // Add bottom tab bar height to the style instead of to keyboardVerticalOffset
-            marginBottom: tabBarHeight
-          }
-        ]}
-        keyboardVerticalOffset={-1}>
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
         <Animated.View
           style={[
             styles.sheet,
             {
-              backgroundColor,
-              paddingBottom: Math.max(insets.bottom, 16),
+              backgroundColor: '#2a2a2a', // Darker gray for retro windows
+              paddingBottom: insets.bottom + 25,
             },
             sheetStyle,
           ]}>
-          <ThemedView style={styles.handle} />
-          <ThemedText type="title" style={styles.title}>
-            Enter Wallet Address
-          </ThemedText>
           
-          <View style={styles.inputContainer}>
+          {/* Windows 95 style title bar */}
+          <View style={styles.titleBar}>
+            <ThemedText type="title" style={styles.titleText}>
+              Enter Wallet Address
+            </ThemedText>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => {
+                Keyboard.dismiss();
+                onClose();
+              }}>
+              <Ionicons name="close" size={16} color={textColor} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.content}>
             <TextInput
               style={styles.input}
               value={address}
@@ -157,8 +164,9 @@ export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
               autoCorrect={false}
               autoFocus={true}
             />
+            
             <TouchableOpacity
-              style={[styles.button, styles.connectButton]}
+              style={styles.button}
               onPress={handleConnect}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>Connect</ThemedText>
@@ -179,11 +187,14 @@ const styles = StyleSheet.create({
     zIndex: 1000, // Ensure it appears above other elements
   },
   sheet: {
-    position: 'relative', // Changed from absolute to relative
+    position: 'relative',
     width: '100%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#666666',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -193,42 +204,74 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#999',
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 12, // Reduced margin
-  },
-  inputContainer: {
-    width: '100%',
-    gap: 12, // Reduced gap
-  },
-  input: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#333',
-  },
-  button: {
-    paddingVertical: 12, // Reduced padding
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
+  titleBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0a7a8c',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
-  connectButton: {
-    backgroundColor: '#0a7ea4',
-  },
-  buttonText: {
+  titleText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'SpaceMono-Regular',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  closeButton: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#c0c0c0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#ffffff',
+    borderLeftColor: '#ffffff',
+    borderBottomColor: '#555555',
+    borderRightColor: '#555555',
+  },
+  content: {
+    padding: 16,
+    gap: 16,
+  },
+  input: {
+    backgroundColor: '#444444',
+    borderRadius: 0,
+    padding: 12,
+    fontSize: 16,
+    color: '#ffffff',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#333333',
+    borderLeftColor: '#333333',
+    borderBottomColor: '#666666',
+    borderRightColor: '#666666',
+  },
+  button: {
+    padding: 16,
+    alignItems: 'center',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+    backgroundColor: '#555555',
+  },
+  buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Transaction, serializeTransaction, parseTransaction } from 'viem';
+import { Transaction, serializeTransaction, parseTransaction, fromRlp, toRlp } from 'viem';
 
 // Conditionally import NFC manager
 let NfcManager: any = null;
@@ -24,36 +24,6 @@ try {
  */
 export class HitoManager {
   /**
-   * Format transaction data as per Hito requirements
-   * @param tx Transaction object
-   * @param address Wallet address
-   * @returns Formatted transaction object for Hito
-   */
-  formatTransaction(tx: Transaction, address: string) {
-    // console.log('Formatting transaction for Hito:', JSON.stringify(tx));
-    
-    // Format transaction as per Hito requirements
-    const formattedTx = {
-      from: address,
-      to: tx.to,
-      value: tx.value || '0x0',
-      data: tx.data || '0x',
-      nonce: tx.nonce,
-      gasLimit: '0x' + tx.gas.toString(16),
-      gasPrice: tx.gasPrice !== undefined ? '0x' + tx.gasPrice?.toString(16) : undefined,
-      type: tx.type === 'eip1559' ? 2 : 0,
-      maxFeePerGas: tx.maxFeePerGas !== undefined ? '0x' + tx.maxFeePerGas.toString(16) : undefined,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas !== undefined ? '0x' + tx.maxPriorityFeePerGas.toString(16) : undefined,
-      chainId: tx.chainId,
-    };
-
-    // Log formatted transaction for debugging
-    console.log('Formatted transaction:', JSON.stringify(formattedTx));
-    
-    return formattedTx;
-  }
-
-  /**
    * Write transaction data to Hito via NFC
    * @param tx Formatted transaction object
    * @returns Promise resolving to true if successful
@@ -71,7 +41,14 @@ export class HitoManager {
       await NfcManager.requestTechnology(NfcTech.Ndef);
       
       // Serialize (RLP encode) the transaction
-      const txUnsignedHex = serializeTransaction(tx);
+      let txUnsignedHex = serializeTransaction(tx);
+      if (txUnsignedHex.startsWith('0x02')) {
+
+        let txArray = fromRlp(('0x' + txUnsignedHex.slice(4)) as `0x${string}`, 'hex');
+        txArray.push('0x'); txArray.push('0x'); txArray.push('0x');
+    
+        txUnsignedHex = toRlp(txArray).replace('0x', '0x02') as `0x02${string}`;
+      }
       console.log('RLP encoded transaction:', tx, txUnsignedHex);
 
       // TODO fix tx signature

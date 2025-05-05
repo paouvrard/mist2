@@ -8,6 +8,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
@@ -34,6 +35,7 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
 
   useEffect(() => {
     if (isVisible) {
@@ -82,57 +84,64 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
         style={[
           styles.sheet,
           {
-            backgroundColor,
-            paddingBottom: insets.bottom + 65,
+            backgroundColor: '#2a2a2a',
+            paddingBottom: insets.bottom + 25,
           },
           sheetStyle,
         ]}>
-        <ThemedView style={styles.handle} />
-        <ThemedText type="title" style={styles.title}>
-          Connected Wallet
-        </ThemedText>
+        {/* Windows 95 title bar */}
+        <View style={styles.titleBar}>
+          <ThemedText type="title" style={styles.titleText}>
+            Connected Wallet
+          </ThemedText>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Ionicons name="close" size={16} color={textColor} />
+          </TouchableOpacity>
+        </View>
         
-        {wallet ? (
-          <>
-            <ScrollView style={styles.walletList}>
-              {wallets.map((walletItem, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.walletOption,
-                    (walletItem.address === wallet?.address && walletItem.type === wallet?.type) &&
-                      styles.selectedWallet,
-                  ]}
-                  onPress={() => {
-                    if (walletItem.type !== wallet?.type) {
-                      onSwitchWallet(walletItem);
-                    }
-                  }}
-                  activeOpacity={0.8}>
-                  <ThemedText style={styles.walletType}>
-                    {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
-                  </ThemedText>
-                  <ThemedText style={styles.walletAddress}>
-                    {truncateAddress(walletItem.address)}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        <View style={styles.content}>
+          {wallet ? (
+            <>
+              <ScrollView style={styles.walletList}>
+                {wallets.map((walletItem, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.walletOption,
+                      (walletItem.address === wallet?.address && walletItem.type === wallet?.type) &&
+                        styles.selectedWallet,
+                    ]}
+                    onPress={() => {
+                      if (walletItem.type !== wallet?.type) {
+                        onSwitchWallet(walletItem);
+                      }
+                    }}
+                    activeOpacity={0.8}>
+                    <ThemedText style={styles.walletType}>
+                      {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
+                    </ThemedText>
+                    <ThemedText style={styles.walletAddress}>
+                      {truncateAddress(walletItem.address)}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-            <TouchableOpacity
-              style={[styles.button, styles.disconnectButton]}
-              onPress={onDisconnect}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.noWalletContainer}>
-            <ThemedText style={styles.noWalletText}>
-              No wallet connected, connect wallet from the app.
-            </ThemedText>
-          </View>
-        )}
+              <TouchableOpacity
+                style={[styles.button, styles.disconnectButton]}
+                onPress={onDisconnect}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>Disconnect</ThemedText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.noWalletContainer}>
+              <ThemedText style={styles.noWalletText}>
+                No wallet connected, connect wallet from the app.
+              </ThemedText>
+            </View>
+          )}
+        </View>
       </Animated.View>
     </>
   );
@@ -144,10 +153,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
-    gap: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#666666',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -157,48 +168,94 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#999',
-    alignSelf: 'center',
-    marginBottom: 8,
+  titleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0a7a8c',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
-  title: {
-    textAlign: 'center',
-    marginBottom: 16,
+  titleText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'SpaceMono-Regular',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  closeButton: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#c0c0c0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#ffffff',
+    borderLeftColor: '#ffffff',
+    borderBottomColor: '#555555',
+    borderRightColor: '#555555',
+  },
+  content: {
+    padding: 16,
+    gap: 16,
   },
   walletList: {
-    maxHeight: 300, // Increased from 200 to show more wallets before scrolling
+    maxHeight: 300,
   },
   walletOption: {
     padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
     marginBottom: 8,
+    backgroundColor: '#555555',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
   selectedWallet: {
-    backgroundColor: 'rgba(10,126,164,0.1)',
-    borderColor: '#0a7ea4',
-    borderWidth: 1,
+    backgroundColor: '#666666',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#444444',
+    borderLeftColor: '#444444',
+    borderBottomColor: '#888888',
+    borderRightColor: '#888888',
   },
   walletType: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#e8e8e8',
   },
   walletAddress: {
     fontSize: 14,
-    opacity: 0.7,
+    color: '#b8b8b8',
   },
   button: {
     padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
   },
   disconnectButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#555555',
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
   buttonText: {
     color: '#fff',
@@ -209,10 +266,19 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#3a3a3a',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#333333',
+    borderLeftColor: '#333333',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
   noWalletText: {
     fontSize: 16,
     textAlign: 'center',
-    opacity: 0.8,
+    color: '#e8e8e8',
   },
 });
