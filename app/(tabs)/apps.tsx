@@ -20,13 +20,14 @@ import { Wallet } from '@/utils/walletStorage';
 
 // Define favorite apps
 const favoriteApps = [
-  { id: 'uniswap', name: 'Uniswap', url: 'https://app.uniswap.org' },
-  { id: 'aave', name: 'Aave', url: 'https://app.aave.com' },
-  { id: 'rainbow-bridge', name: 'Rainbow Bridge', url: 'https://rainbowbridge.app' },
-  { id: 'rainbow-bridge-testnet', name: 'Rainbow Bridge Testnet', url: 'https://testnet.rainbowbridge.app' },
-  { id: 'opensea', name: 'OpenSea', url: 'https://opensea.io' },
-  { id: 'lens', name: 'Lens', url: 'https://hey.xyz' },
-  { id: 'rarible', name: 'Rarible', url: 'https://rarible.com' },
+  { id: 'zerion', name: 'Zerion', url: 'https://app.zerion.io', category: 'portfolio' },
+  { id: 'uniswap', name: 'Uniswap', url: 'https://app.uniswap.org', category: 'swap' },
+  { id: 'aave', name: 'Aave', url: 'https://app.aave.com', category: 'earn' },
+  { id: 'rainbow-bridge', name: 'Rainbow Bridge', url: 'https://rainbowbridge.app', category: 'bridge' },
+  { id: 'rainbow-bridge-testnet', name: 'Rainbow Bridge Testnet', url: 'https://testnet.rainbowbridge.app', category: 'testnet' },
+  { id: 'opensea', name: 'OpenSea', url: 'https://opensea.io', category: 'nft' },
+  { id: 'lens', name: 'Lens', url: 'https://hey.xyz', category: 'social' },
+  { id: 'rarible', name: 'Rarible', url: 'https://rarible.com', category: 'nft' },
 ];
 
 // Interface for app connection state tracking
