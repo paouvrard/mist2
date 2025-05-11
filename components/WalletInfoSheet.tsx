@@ -111,11 +111,7 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
                       (walletItem.address === wallet?.address && walletItem.type === wallet?.type) &&
                         styles.selectedWallet,
                     ]}
-                    onPress={() => {
-                      if (walletItem.type !== wallet?.type) {
-                        onSwitchWallet(walletItem);
-                      }
-                    }}
+                    onPress={() => onSwitchWallet(walletItem)}
                     activeOpacity={0.8}>
                     <ThemedText style={styles.walletType}>
                       {walletItem.type.charAt(0).toUpperCase() + walletItem.type.slice(1)}
