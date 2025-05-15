@@ -69,12 +69,6 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
     }
   };
 
-  const handleCancel = () => {
-    if (isFullyVisible) {
-      onCancel();
-    }
-  };
-
   const handleClose = () => {
     if (isFullyVisible) {
       onClose();
@@ -159,12 +153,6 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
             <ThemedText style={styles.buttonText}>
               {wallets.length === 0 ? 'No wallets available' : 'Connect'}
             </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={handleCancel}
-            activeOpacity={0.8}>
-            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
           </TouchableOpacity>
         </View>
       </Animated.View>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -65,6 +65,10 @@ export function TransactionRequestSheet({
   const { open } = useAppKit();
   const { address } = useAccount();
   const hitoManager = new HitoManager();
+  
+  // Get screen dimensions for max height calculation
+  const windowHeight = Dimensions.get('window').height;
+  const maxSheetHeight = windowHeight * 0.8;
 
   useEffect(() => {
     if (isVisible) {
@@ -205,6 +209,7 @@ export function TransactionRequestSheet({
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    maxHeight: maxSheetHeight,
   }));
 
   if (!isRendered && !isVisible) {
@@ -245,7 +250,7 @@ export function TransactionRequestSheet({
           </TouchableOpacity>
         </View>
         
-        <View style={styles.content}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.detailsContainer}>
             {populatingTransaction ? (
               <View style={styles.loadingContainer}>
@@ -340,7 +345,8 @@ export function TransactionRequestSheet({
               </ThemedText>
             )}
           </View>
-
+        </ScrollView>
+        <View>
           {error && (
             <ThemedText style={styles.error}>{error}</ThemedText>
           )}
@@ -351,7 +357,7 @@ export function TransactionRequestSheet({
             </ThemedText>
           )}
 
-          {isWalletConnect && !address && (
+          {isWalletConnect && !address && !populatingTransaction && (
             <>
               <ThemedText style={styles.description}>
                 No wallet connected. Connect a wallet to approve this request.
@@ -365,7 +371,7 @@ export function TransactionRequestSheet({
             </>
           )}
 
-          {isWalletConnect && address && !accountMatches && (
+          {isWalletConnect && address && !accountMatches && !populatingTransaction && (
             <>
               <ThemedText style={styles.description}>
                 The account is not connected, switch account from the wallet or reconnect
@@ -379,7 +385,7 @@ export function TransactionRequestSheet({
             </>
           )}
 
-          {isWalletConnect && accountMatches && (
+          {isWalletConnect && accountMatches && !populatingTransaction && (
             <TouchableOpacity
               style={[
                 styles.button,
@@ -394,7 +400,7 @@ export function TransactionRequestSheet({
             </TouchableOpacity>
           )}
           
-          {isHito && (
+          {isHito && !populatingTransaction && (
             <TouchableOpacity
               style={[
                 styles.button,
@@ -404,17 +410,10 @@ export function TransactionRequestSheet({
               disabled={isLoading || populatingTransaction}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Preparing...' : populatingTransaction ? 'Loading...' : 'Sign with Hito'}
+                {isLoading ? 'Connect your Hito to NFC...' : 'Approve with Hito'}
               </ThemedText>
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onClose}
-            activeOpacity={0.8}>
-            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
-          </TouchableOpacity>
         </View>
       </Animated.View>
       
@@ -482,6 +481,9 @@ const styles = StyleSheet.create({
     borderLeftColor: '#ffffff',
     borderBottomColor: '#555555',
     borderRightColor: '#555555',
+  },
+  scrollView: {
+    flexGrow: 0,
   },
   content: {
     padding: 16,

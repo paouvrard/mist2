@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -55,6 +55,10 @@ export function SignatureRequestSheet({
   const { open } = useAppKit();
   const { address } = useAccount();
   const hitoManager = new HitoManager();
+  
+  // Get screen dimensions for max height calculation
+  const windowHeight = Dimensions.get('window').height;
+  const maxSheetHeight = windowHeight * 0.8;
 
   useEffect(() => {
     if (isVisible) {
@@ -156,6 +160,7 @@ export function SignatureRequestSheet({
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    maxHeight: maxSheetHeight,
   }));
 
   if (!isRendered && !isVisible) {
@@ -195,7 +200,7 @@ export function SignatureRequestSheet({
           </TouchableOpacity>
         </View>
         
-        <View style={styles.content}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.messageContainer}>
             <ThemedText style={styles.messageLabel}>Message:</ThemedText>
             <ThemedText style={styles.message}>{message}</ThemedText>
@@ -264,18 +269,11 @@ export function SignatureRequestSheet({
               disabled={isLoading}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Preparing...' : 'Sign with Hito'}
+                {isLoading ? 'Connect your Hito to NFC...' : 'Sign with Hito'}
               </ThemedText>
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onClose}
-            activeOpacity={0.8}>
-            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </Animated.View>
       
       <QRScannerSheet
@@ -342,6 +340,9 @@ const styles = StyleSheet.create({
     borderLeftColor: '#ffffff',
     borderBottomColor: '#555555',
     borderRightColor: '#555555',
+  },
+  scrollView: {
+    flexGrow: 0,
   },
   content: {
     padding: 16,
