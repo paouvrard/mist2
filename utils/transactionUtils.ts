@@ -1,5 +1,5 @@
 // filepath: /Users/pa/mist2/utils/transactionUtils.ts
-import { type Transaction, formatEther, formatGwei } from 'viem';
+import { type Transaction, formatEther, formatGwei, hexToBigInt } from 'viem';
 import { getProvider } from './chains';
 
 /**
@@ -9,28 +9,37 @@ import { getProvider } from './chains';
  * @returns A more complete transaction object with populated fields
  */
 export async function populateTransactionFields(
-  transaction: Partial<Transaction>, 
-  chainId: number
+  tx: any, 
+  chainId: number,
+  currentAddress: `0x${string}`,
 ): Promise<Transaction> {
+  // TODO: test contract deployment without to field
   // Get provider for the specified chain
   const provider = getProvider(chainId);
-  if (!provider) {
-    throw new Error(`No provider available for chain ${chainId}`);
+  if (!tx.from) {
+    throw new Error('Transaction must have a "from" field');
+  }
+  if (tx.from !== currentAddress) {
+    console.warn('Transaction "from" address does not match current address');
   }
 
-  // Create a complete transaction object
-  const populatedTx: any = { ...transaction };
-  
+  let populatedTx: Partial<Transaction> = {}
+  populatedTx.from = tx.from;
+  populatedTx.to = tx.to ?? null;
+  populatedTx.value = hexToBigInt(tx.value || '0x0');
+
   // Handle data/input field conversion
-  if (populatedTx.data && !populatedTx.input) {
-    populatedTx.input = populatedTx.data;
-  } else if (populatedTx.input && !populatedTx.data) {
-    populatedTx.data = populatedTx.input;
+  if (tx.data) {
+    populatedTx.input = tx.data;
+  } else if (tx.input) {
+    populatedTx.input = tx.input;
   }
   
   // Set the chainId if not provided
-  if (populatedTx.chainId === undefined) {
-    populatedTx.chainId = chainId;
+  if (!tx.chainId) {
+    populatedTx.chainId = Number(chainId);
+  } else {
+    populatedTx.chainId = Number(tx.chainId);
   }
   
   // Check if the chain supports EIP-1559 by trying to estimate fees
@@ -46,70 +55,40 @@ export async function populateTransactionFields(
   }
   
   // Set transaction type based on EIP-1559 support
-  if (populatedTx.type === undefined) {
-    populatedTx.type = isEIP1559Supported ? "eip1559" : "legacy";
-  }
+  populatedTx.type = isEIP1559Supported ? "eip1559" : "legacy";
   
-  // If sender address not provided, we can't get the nonce
-  if (!populatedTx.from) {
-    console.warn('Transaction missing from address, cannot fetch nonce');
-    return populatedTx;
-  }
-
   // Get the nonce if not provided
-  if (populatedTx.nonce === undefined) {
+  if (tx.nonce === undefined) {
     populatedTx.nonce = await provider.getTransactionCount({
-      address: populatedTx.from,
+      address: tx.from as `0x${string}`,
       blockTag: 'pending'
     });
+  } else {
+    populatedTx.nonce = tx.nonce;
   }
   
   // Handle fee data based on EIP-1559 support
-  if (isEIP1559Supported) {
+  if (isEIP1559Supported && feeData) {
     // For EIP-1559 compatible chains
-    if (populatedTx.maxFeePerGas === undefined || populatedTx.maxPriorityFeePerGas === undefined) {
-      if (feeData?.maxFeePerGas) {
-        populatedTx.maxFeePerGas = feeData.maxFeePerGas;
-      }
-      if (feeData?.maxPriorityFeePerGas) {
-        populatedTx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-      }
-    }
-    delete populatedTx.gasPrice;
+    populatedTx.maxFeePerGas = feeData.maxFeePerGas;
+    populatedTx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
   } else {
     // For legacy chains
-    if (populatedTx.gasPrice === undefined) {
-      const gasPrice = await provider.getGasPrice();
-      populatedTx.gasPrice = gasPrice;
-    }
-    
-    // Clear EIP-1559 specific fields for legacy transactions
-    delete populatedTx.maxFeePerGas;
-    delete populatedTx.maxPriorityFeePerGas;
+    const gasPrice = await provider.getGasPrice();
+    populatedTx.gasPrice = gasPrice;
   }
+
+  const gasEstimate = await provider.estimateGas({
+    account: populatedTx.from,
+    to: populatedTx.to,
+    value: populatedTx.value,
+    data: populatedTx.input,
+  });
   
-  // Estimate gas if not provided
-  if (populatedTx.gas === undefined) {
-    const gasEstimate = await provider.estimateGas({
-      account: populatedTx.from,
-      to: populatedTx.to,
-      value: populatedTx.value || 0n,
-      data: populatedTx.data || populatedTx.input, // Use either data or input
-      ...(isEIP1559Supported 
-        ? { 
-            maxFeePerGas: populatedTx.maxFeePerGas,
-            maxPriorityFeePerGas: populatedTx.maxPriorityFeePerGas
-          } 
-        : { 
-            gasPrice: populatedTx.gasPrice 
-          })
-    });
-    
-    // Add a 10% buffer to ensure the transaction succeeds
-    populatedTx.gas = (gasEstimate * 110n) / 100n;
-  }
+  // Add a 10% buffer to ensure the transaction succeeds
+  populatedTx.gas = (gasEstimate * 110n) / 100n;
   
-  return populatedTx;
+  return populatedTx as Transaction;
 }
 
 /**
@@ -117,21 +96,18 @@ export async function populateTransactionFields(
  * @param tx - The transaction object to format
  * @returns Object with formatted values for UI display
  */
-export function formatTransactionForDisplay(tx: Partial<Transaction>) {
-  // Use type assertion to access both standard fields and possible data field
-  const transaction = tx as any;
-  
+export function formatTransactionForDisplay(tx: Transaction) {
   return {
-    to: transaction.to,
-    from: transaction.from,
-    value: transaction.value ? formatEther(transaction.value) : '0',
-    data: transaction.data || transaction.input, // Use either data or input
-    gas: transaction.gas?.toString(),
-    maxFeePerGas: transaction.maxFeePerGas ? formatGwei(transaction.maxFeePerGas) : undefined,
-    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas ? formatGwei(transaction.maxPriorityFeePerGas) : undefined,
-    gasPrice: transaction.gasPrice ? formatGwei(transaction.gasPrice) : undefined,
-    nonce: transaction.nonce?.toString(),
-    type: transaction.type?.toString(),
-    chainId: transaction.chainId?.toString(),
+    to: tx.to,
+    from: tx.from,
+    value: formatEther(tx.value),
+    input: tx.input,
+    gas: tx.gas?.toString(),
+    maxFeePerGas: tx.maxFeePerGas ? formatGwei(tx.maxFeePerGas) : undefined,
+    maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? formatGwei(tx.maxPriorityFeePerGas) : undefined,
+    gasPrice: tx.gasPrice ? formatGwei(tx.gasPrice) : undefined,
+    nonce: tx.nonce.toString(),
+    type: tx.type.toString(),
+    chainId: tx.chainId?.toString(),
   };
 }

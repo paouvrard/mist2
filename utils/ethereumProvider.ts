@@ -72,6 +72,14 @@ export const getEthereumProvider = (instanceId: string = 'default'): string => {
             data: args
           }));
         },
+        debug: (...args) => {
+          originalConsole.log(...args); // Fallback to log if original debug doesn't exist
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            method: 'debug',
+            data: args
+          }));
+        },
       };
 
       // Catch unhandled errors and promise rejections

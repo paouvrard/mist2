@@ -14,7 +14,6 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
 import { Buffer } from 'buffer';
-import { Transaction } from 'viem';
 import { getRpcUrl } from '@/utils/chains';
 import { Wallet } from '@/utils/walletStorage';
 
@@ -28,6 +27,7 @@ const favoriteApps = [
   { id: 'opensea', name: 'OpenSea', url: 'https://opensea.io', category: 'nft' },
   { id: 'lens', name: 'Lens', url: 'https://hey.xyz', category: 'social' },
   { id: 'rarible', name: 'Rarible', url: 'https://rarible.com', category: 'nft' },
+  { id: 'mycrypto', name: 'MyCrypto', url: 'https://app.mycrypto.com/sign-message', category: 'portfolio' },
 ];
 
 // Interface for app connection state tracking
@@ -117,7 +117,7 @@ export default function AppsScreen() {
   const [isSignatureSheetVisible, setIsSignatureSheetVisible] = useState(false);
   const [isTransactionSheetVisible, setIsTransactionSheetVisible] = useState(false);
   const [signatureMessage, setSignatureMessage] = useState('');
-  const [transactionDetails, setTransactionDetails] = useState<Transaction>({} as Transaction);
+  const [transactionDetails, setTransactionDetails] = useState({});
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [pendingAppId, setPendingAppId] = useState<string | null>(null);
   
@@ -800,6 +800,55 @@ export default function AppsScreen() {
                   jsonrpc: '2.0',
                   method: 'eth_getTransactionByHash',
                   params: data.payload.params
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (appWebViewRef) {
+                  if (responseJson.error) {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (appWebViewRef) {
+                  appWebViewRef.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+            
+          case 'eth_gasPrice':
+            // Use direct RPC call from React Native side
+            if (appWebViewRef) {
+              // Fetch from RPC using the current chain's RPC URL
+              fetch(getRpcUrl(appState.chainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_gasPrice',
+                  params: []
                 })
               })
               .then(response => response.json())

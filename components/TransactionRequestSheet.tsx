@@ -11,10 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sendTransaction, switchChain } from '@wagmi/core';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
-import type { Transaction } from 'viem';
+import { keccak256, parseSignature, serializeTransaction, type Transaction } from 'viem';
 import { Ionicons } from '@expo/vector-icons';
-
-import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Wallet } from '@/utils/walletStorage';
@@ -22,12 +20,13 @@ import { wagmiConfig } from '@/app/_layout';
 import { HitoManager } from '@/utils/hito/hitoManager';
 import { QRScannerSheet } from './QRScannerSheet';
 import { populateTransactionFields, formatTransactionForDisplay } from '@/utils/transactionUtils';
+import { getProvider } from '@/utils/chains';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
   onSuccess?: (hash: string) => void;
-  transaction: Transaction;
+  transaction: any;
   currentWallet: Wallet | null;
   currentChainId: number;
 }
@@ -53,10 +52,11 @@ export function TransactionRequestSheet({
   const [showQRScanner, setShowQRScanner] = useState(false);
   
   const [populatingTransaction, setPopulatingTransaction] = useState(false);
-  const [populatedTransaction, setPopulatedTransaction] = useState<Partial<Transaction>>(transaction);
+  const [populatedTransaction, setPopulatedTransaction] = useState<Transaction | null>(null);
   const [populationError, setPopulationError] = useState<string | null>(null);
   
   const formattedTx = useMemo(() => {
+    if (!populatedTransaction) return null;
     return formatTransactionForDisplay(populatedTransaction);
   }, [populatedTransaction]);
   
@@ -79,12 +79,14 @@ export function TransactionRequestSheet({
     setPopulationError(null);
     
     try {
-      const populated = await populateTransactionFields(transaction, currentChainId);
+      if (!currentWallet) {
+        throw new Error('No wallet connected'); 
+      }
+      const populated = await populateTransactionFields(transaction, currentChainId, currentWallet.address as `0x${string}`);
       setPopulatedTransaction(populated);
     } catch (err) {
       console.error('Failed to populate transaction:', err);
-      setPopulationError('Failed to load complete transaction details');
-      setPopulatedTransaction(transaction);
+      setPopulationError('Failed to load transaction details');
     } finally {
       setPopulatingTransaction(false);
     }
@@ -110,7 +112,7 @@ export function TransactionRequestSheet({
   }, [isVisible]);
 
   const handleApprove = async () => {
-    if (!currentWallet) return;
+    if (!currentWallet || !populatedTransaction) return;
     
     setIsLoading(true);
     setError(null);
@@ -124,7 +126,7 @@ export function TransactionRequestSheet({
           throw new Error(nfcStatus.message || 'NFC is required and not available');
         }
         
-        await hitoManager.writeTransactionToNFC(populatedTransaction);
+        await hitoManager.writeTransactionToNFC(populatedTransaction, currentWallet.address);
         
         Alert.alert(
           'Transaction Sent to Hito',
@@ -173,15 +175,17 @@ export function TransactionRequestSheet({
   };
   
   const handleSignatureScanned = async (signatureData: string) => {
+    if (!populatedTransaction) return;
     console.log('Transaction signature received from QR code:', signatureData);
     
     try {
       setIsLoading(true);
-      
-      const signedTx = hitoManager.processScannedSignature(signatureData);
-      console.log('Processed signed transaction:', signedTx);
-      throw "TODO broadcast the signed transaction";
-      const txHash = ""
+      const sigHex = hitoManager.processScannedSignature(signatureData);
+      const rlpTx = hitoManager.getRLPTransaction(populatedTransaction, sigHex);
+      const txHash = keccak256(rlpTx);
+      console.log('Transaction hash:', txHash, rlpTx);
+      const provider = getProvider(populatedTransaction.chainId!);
+      await provider.sendRawTransaction({ serializedTransaction: rlpTx});
       
       if (onSuccess) {
         onSuccess(txHash);
@@ -251,9 +255,8 @@ export function TransactionRequestSheet({
             ) : populationError ? (
               <View style={styles.errorContainer}>
                 <ThemedText style={styles.errorText}>{populationError}</ThemedText>
-                <ThemedText style={styles.errorSubtext}>Showing partial transaction details.</ThemedText>
               </View>
-            ) : (
+            ) : formattedTx ? (
               <>
                 {formattedTx.to && (
                   <View style={styles.detailRow}>
@@ -269,11 +272,11 @@ export function TransactionRequestSheet({
                     </ThemedText>
                   </View>
                 )}
-                {formattedTx.data && formattedTx.data !== '0x' && (
+                {formattedTx.input && (
                   <View style={styles.detailRow}>
                     <ThemedText style={styles.detailLabel}>Data:</ThemedText>
-                    <ThemedText style={[styles.detailValue, styles.dataText]} numberOfLines={3} ellipsizeMode="middle">
-                      {formattedTx.data}
+                    <ThemedText style={[styles.detailValue, styles.dataText]} ellipsizeMode="middle">
+                      {formattedTx.input}
                     </ThemedText>
                   </View>
                 )}
@@ -331,6 +334,10 @@ export function TransactionRequestSheet({
                   </View>
                 )}
               </>
+            ) : (
+              <ThemedText style={styles.description}>
+                Failed to load transaction details
+              </ThemedText>
             )}
           </View>
 

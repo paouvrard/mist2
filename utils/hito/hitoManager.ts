@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Transaction, serializeTransaction, parseTransaction, fromRlp, toRlp } from 'viem';
+import { Transaction, serializeTransaction, parseTransaction, fromRlp, toRlp, parseSignature } from 'viem';
 
 // Conditionally import NFC manager
 let NfcManager: any = null;
@@ -28,7 +28,7 @@ export class HitoManager {
    * @param tx Formatted transaction object
    * @returns Promise resolving to true if successful
    */
-  async writeTransactionToNFC(tx: Transaction): Promise<boolean> {
+  async writeTransactionToNFC(tx: Transaction, address: string): Promise<boolean> {
     if (!NfcManager) {
       console.log('NFC not available in this environment');
       return false;
@@ -41,20 +41,20 @@ export class HitoManager {
       await NfcManager.requestTechnology(NfcTech.Ndef);
       
       // Serialize (RLP encode) the transaction
-      let txUnsignedHex = serializeTransaction(tx);
+      let txUnsignedHex = serializeTransaction({...tx, data: tx.input});
       if (txUnsignedHex.startsWith('0x02')) {
 
-        let txArray = fromRlp(('0x' + txUnsignedHex.slice(4)) as `0x${string}`, 'hex');
+        let txArray = fromRlp(('0x' + txUnsignedHex.slice(4)) as `0x${string}`, 'hex') as Array<`0x${string}`> ;
         txArray.push('0x'); txArray.push('0x'); txArray.push('0x');
     
         txUnsignedHex = toRlp(txArray).replace('0x', '0x02') as `0x02${string}`;
       }
-      console.log('RLP encoded transaction:', tx, txUnsignedHex);
+      console.log('RLP encoded transaction:', tx, txUnsignedHex, parseTransaction(txUnsignedHex));
 
       // TODO fix tx signature
       
       // Create the payload string in the format expected by Hito
-      const payload = `evm.sign:${tx.from.toLowerCase()}:${txUnsignedHex}`;
+      const payload = `evm.sign:${address}:${txUnsignedHex}`;
       
       console.log('Sending transaction to Hito:', payload);
       
@@ -139,7 +139,7 @@ export class HitoManager {
    * @param signatureData QR code data
    * @returns Processed signature
    */
-  processScannedSignature(signatureData: string): string {
+  processScannedSignature(signatureData: string): `0x${string}` {
     console.log('Processing scanned signature data:', signatureData);
     
     try {
@@ -154,13 +154,13 @@ export class HitoManager {
         }
         
         console.log('Processed Hito signature:', signatureHex);
-        return signatureHex;
+        return signatureHex as `0x${string}`;
       }
       
       // If already in hex format
       if (signatureData.startsWith('0x')) {
         console.log('Signature is already in hex format');
-        return signatureData;
+        return signatureData as `0x${string}`;
       }
       
       // Try parsing as JSON
@@ -184,6 +184,23 @@ export class HitoManager {
       console.error('Error processing scanned signature:', error);
       throw error;
     }
+  }
+
+  getRLPTransaction(tx: Transaction, sigHex: `0x${string}`): `0x${string}` {
+      const sig = parseSignature(sigHex as `0x${string}`)
+      if (tx.type === "eip1559") {
+        // For EIP-1559 (type 2) transactions, yParity is what matters
+        // v isn't used directly in the serialized format, so this is fine
+        sig.v = BigInt(sig.yParity);
+      } else if (tx.type === "legacy") {
+        // For legacy transactions, v needs to be calculated based on chainId
+        const chainId = Number(tx.chainId!);
+        sig.v = BigInt(sig.yParity) + BigInt(chainId * 2 + 35);
+      } else {
+        throw new Error('Unsupported transaction type');
+      }
+      const rlpTx = serializeTransaction({...tx, data: tx.input}, sig);
+      return rlpTx;
   }
 
   /**

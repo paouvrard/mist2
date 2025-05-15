@@ -51,8 +51,8 @@
     "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "viem": "^2.27.3",
-    "wagmi": "^2.14.16"
+    "viem": "2.23.10",
+    "wagmi": "2.14.13"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

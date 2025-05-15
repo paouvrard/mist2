@@ -33,8 +33,7 @@ export function getProvider(chainId: number) {
   const chain = chains.find(chain => chain.id === chainId);
   
   if (!chain) {
-    console.warn(`No chain configuration found for chainId ${chainId}`);
-    return undefined;
+    throw new Error(`No provider available for chain ${chainId}`);
   }
 
   try {
@@ -43,8 +42,8 @@ export function getProvider(chainId: number) {
       transport: http(),
     });
   } catch (error) {
-    console.error(`Failed to create provider for chainId ${chainId}:`, error);
-    return undefined;
+    console.error(error)
+    throw new Error(`Failed to create provider for chainId ${chainId}.`);
   }
 }
 
