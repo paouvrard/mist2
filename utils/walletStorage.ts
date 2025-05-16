@@ -40,7 +40,7 @@ export type Wallet = ViewOnlyWallet | HitoWallet | Lattice1Wallet | WalletConnec
  */
 export function truncateAddress(address: string): string {
   if (!address || address.length <= 22) return address;
-  return `${address.substring(0, 15)}...${address.substring(address.length - 17)}`;
+  return `${address.substring(0, 17)}...${address.substring(address.length - 17)}`;
 }
 
 const STORAGE_KEY = '@wallets';

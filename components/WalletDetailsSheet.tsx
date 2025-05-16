@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Clipboard } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -30,6 +30,7 @@ export function WalletDetailsSheet({ isVisible, onClose, onForget, wallet }: Pro
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
+  const [copyButtonText, setCopyButtonText] = useState('Copy Address');
   const insets = useSafeAreaInsets();
   const textColor = useThemeColor({}, 'text');
 
@@ -51,6 +52,19 @@ export function WalletDetailsSheet({ isVisible, onClose, onForget, wallet }: Pro
   const handleForget = () => {
     if (wallet) {
       onForget(wallet);
+    }
+  };
+
+  const handleCopyAddress = () => {
+    if (wallet) {
+      // Using React Native's built-in Clipboard as a fallback
+      Clipboard.setString(wallet.address);
+      setCopyButtonText('Copied to clipboard !');
+      
+      // Reset button text after 1 second
+      setTimeout(() => {
+        setCopyButtonText('Copy Address');
+      }, 1000);
     }
   };
 
@@ -116,7 +130,14 @@ export function WalletDetailsSheet({ isVisible, onClose, onForget, wallet }: Pro
                 style={[styles.button, styles.forgetButton]}
                 onPress={handleForget}
                 activeOpacity={0.8}>
-                <ThemedText style={styles.buttonText}>Forget this wallet</ThemedText>
+                <ThemedText style={[styles.buttonText, styles.forgetButtonText]}>Forget this wallet</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.copyButton]}
+                onPress={handleCopyAddress}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>{copyButtonText}</ThemedText>
               </TouchableOpacity>
             </>
           ) : (
@@ -221,6 +242,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderRightWidth: 2,
   },
+  copyButton: {
+    backgroundColor: '#555555',
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+    marginTop: 12,
+  },
   forgetButton: {
     backgroundColor: '#555555',
     borderTopColor: '#888888',
@@ -228,6 +257,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
     marginTop: 12,
+  },
+  forgetButtonText: {
+    color: '#FF9999', // Softer pastel red
   },
   buttonText: {
     color: '#fff',

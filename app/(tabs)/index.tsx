@@ -188,8 +188,7 @@ function Wallets() {
   // Calculate proper top padding based on platform
   const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
 
-  const renderWalletItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Wallet>) => {
-    const index = getIndex();
+  const renderWalletItem = useCallback(({ item, drag, isActive }: RenderItemParams<Wallet>) => {
     const isWallConn = isWalletConnected(item);
     
     // Track if this is a potential drag operation or just a tap
@@ -235,7 +234,7 @@ function Wallets() {
         </TouchableOpacity>
       </ScaleDecorator>
     );
-  }, [isDragging]);
+  }, [isDragging, isConnected, address]); // Added isConnected and address to dependencies
 
   return (
     <ThemedView style={styles.container}>
