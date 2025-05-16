@@ -40,6 +40,7 @@ export const getEthereumProvider = (instanceId: string = 'default'): string => {
       // Console logging bridge
       const originalConsole = window.console;
       window.console = {
+        ...originalConsole,
         log: (...args) => {
           originalConsole.log(...args);
           window.ReactNativeWebView.postMessage(JSON.stringify({

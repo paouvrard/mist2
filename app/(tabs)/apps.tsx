@@ -58,6 +58,11 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
 }, ref) => {
   const webViewRef = useRef<WebView>(null);
   const INJECT_PROVIDER_JS = getEthereumProvider(instanceId);
+  const insets = useSafeAreaInsets();
+  const backgroundColor = useThemeColor({}, 'background'); // Get the theme background color
+  
+  // Calculate status bar height to ensure content is below status bar/camera
+  const statusBarHeight = Platform.OS === 'android' ? Math.max(insets.top, 24) : insets.top;
 
   // Use React.useImperativeHandle to forward the WebView ref
   React.useImperativeHandle(ref, () => webViewRef.current as WebView);
@@ -71,11 +76,14 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
     <View 
       style={[
         styles.webviewWrapper, 
-        // Use position instead of opacity for better state preservation
         !visible && styles.offscreenView
       ]}
       collapsable={false}
       renderToHardwareTextureAndroid={true}>
+      
+      {/* Status bar placeholder to push content down - use the app's dark background color */}
+      <View style={{ height: statusBarHeight, backgroundColor: backgroundColor }} />
+      
       <WebView
         ref={webViewRef}
         source={{ uri: url }}
@@ -88,11 +96,15 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
         cacheEnabled={true}
         cacheMode="LOAD_CACHE_ELSE_NETWORK"
         keyboardDisplayRequiresUserAction={false}
-        contentInsetAdjustmentBehavior="automatic"
-        automaticallyAdjustContentInsets={true}
+        // Use different inset behavior per platform
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        automaticallyAdjustContentInsets={false}
         androidLayerType="hardware"
-        incognito={false} // Set to true for private browsing
-        // Use key to prevent recreation of WebView if URL changes
+        // Set explicit content insets to zero since we're handling this with a View
+        contentInset={{ top: 0, left: 0, right: 0, bottom: 0 }}
+        // Explicitly override any default styling from the webview
+        originWhitelist={['*']}
+        incognito={false}
         key={instanceId}
       />
     </View>
@@ -1084,6 +1096,7 @@ export default function AppsScreen() {
       {/* Keep WebViews mounted but hide them when showing welcome */}
       <View style={[
         styles.webviewContainer, 
+        // Apply platform-specific padding - use insets.top for both platforms to ensure content starts below the status bar
         { paddingTop: insets.top },
         showWelcome && styles.offscreenView // Use position-based hiding instead of display: none
       ]}>
@@ -1177,6 +1190,8 @@ const styles = StyleSheet.create({
   webviewContainer: {
     flex: 1,
     paddingBottom: 50, // Fixed padding for the navigation bar height
+    // Ensure there are no invisble overlays blocking touch events
+    overflow: 'hidden',
   },
   navigationBarContainer: {
     position: 'absolute',
@@ -1237,6 +1252,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Make sure WebView container isn't interfering with touches
+    overflow: 'hidden',
+    backgroundColor: 'transparent', // Avoid any background color that might block touch
   },
   offscreenView: {
     position: 'absolute',
@@ -1254,5 +1272,6 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+    backgroundColor: 'transparent', // Ensure WebView has transparent background
   },
 });
