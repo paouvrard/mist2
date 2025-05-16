@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -204,6 +204,26 @@ export default function AppsScreen() {
   useEffect(() => {
     setHideTabBar(!showWelcome);
   }, [showWelcome, setHideTabBar]);
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    // Only add the listener for Android
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // If we're not on the welcome screen and we have an active app
+        if (!showWelcome && activeAppId) {
+          handleHomePress();
+          // Return true to prevent default behavior (closing the app)
+          return true;
+        }
+        // Return false to allow default behavior if we're on the welcome screen
+        return false;
+      });
+      
+      // Clean up the event listener when component unmounts
+      return () => backHandler.remove();
+    }
+  }, [showWelcome, activeAppId, canGoBack]);
 
   // Get the active app state
   const getActiveAppState = () => {
