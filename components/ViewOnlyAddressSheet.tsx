@@ -125,15 +125,15 @@ export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
         />
       </Animated.View>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'position' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: '#2a2a2a', // Darker gray for retro windows
-              paddingBottom: insets.bottom + 25,
+              paddingBottom: insets.bottom > 0 ? insets.bottom : 16,
             },
             sheetStyle,
           ]}>
