@@ -254,7 +254,7 @@ export function SignatureRequestSheet({
               disabled={isLoading || isViewOnly}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Signing...' : 'Approve'}
+                {isLoading ? 'Sign the request in your wallet...' : 'Sign with WalletConnect'}
               </ThemedText>
             </TouchableOpacity>
           )}

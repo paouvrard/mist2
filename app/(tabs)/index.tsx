@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { WalletTypeSheet } from '@/components/WalletTypeSheet';
 import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
 import { QRScannerSheet } from '@/components/QRScannerSheet';
+import { WalletDetailsSheet } from '@/components/WalletDetailsSheet';
 import { addWallet, getWallets, deleteWallet, type Wallet, truncateAddress } from '@/utils/walletStorage';
 import { HitoManager } from '@/utils/hito/hitoManager';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
@@ -19,6 +20,8 @@ function Wallets() {
   const [isWalletTypeSheetVisible, setIsWalletTypeSheetVisible] = useState(false);
   const [isViewOnlyAddressSheetVisible, setIsViewOnlyAddressSheetVisible] = useState(false);
   const [isQRScannerVisible, setIsQRScannerVisible] = useState(false);
+  const [isWalletDetailsSheetVisible, setIsWalletDetailsSheetVisible] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
   const { address, isConnected } = useAccount();
@@ -28,21 +31,27 @@ function Wallets() {
 
   // Hide tab bar when sheets are visible, show it otherwise
   useEffect(() => {
-    const shouldHideTabBar = isWalletTypeSheetVisible || isViewOnlyAddressSheetVisible || isQRScannerVisible;
+    const shouldHideTabBar = isWalletTypeSheetVisible || 
+                            isViewOnlyAddressSheetVisible || 
+                            isQRScannerVisible ||
+                            isWalletDetailsSheetVisible;
     setHideTabBar(shouldHideTabBar);
-  }, [isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, setHideTabBar]);
+  }, [isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible, setHideTabBar]);
 
   // Ensure tab bar is visible whenever Wallets is focused
   useFocusEffect(
     React.useCallback(() => {
       // Show tab bar when the screen is focused (only if no sheets are visible)
-      if (!isWalletTypeSheetVisible && !isViewOnlyAddressSheetVisible && !isQRScannerVisible) {
+      if (!isWalletTypeSheetVisible && 
+          !isViewOnlyAddressSheetVisible && 
+          !isQRScannerVisible &&
+          !isWalletDetailsSheetVisible) {
         setHideTabBar(false);
       }
       return () => {
         // No cleanup needed
       };
-    }, [setHideTabBar, isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible])
+    }, [setHideTabBar, isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible])
   );
 
   const loadWallets = async () => {
@@ -71,6 +80,8 @@ function Wallets() {
   const handleDeleteWallet = async (wallet: Wallet) => {
     await deleteWallet(wallet);
     await loadWallets();
+    setIsWalletDetailsSheetVisible(false);
+    setSelectedWallet(null);
   };
 
   const isWalletConnected = (wallet: Wallet) => {
@@ -108,6 +119,16 @@ function Wallets() {
   const handleCloseQRScanner = () => {
     setIsQRScannerVisible(false);
     setHideTabBar(false);
+  };
+
+  const handleWalletCardPress = (wallet: Wallet) => {
+    setSelectedWallet(wallet);
+    setIsWalletDetailsSheetVisible(true);
+  };
+
+  const handleCloseWalletDetailsSheet = () => {
+    setIsWalletDetailsSheetVisible(false);
+    setSelectedWallet(null);
   };
 
   const setIsWalletTypeSheetVisibleWithTabBar = (visible: boolean) => {
@@ -161,7 +182,11 @@ function Wallets() {
       
       <View style={styles.contentContainer}>
         {wallets.map((wallet, index) => (
-          <View key={index} style={styles.walletCard}>
+          <TouchableOpacity
+            key={index}
+            style={styles.walletCard}
+            onPress={() => handleWalletCardPress(wallet)}
+            activeOpacity={0.7}>
             <View style={styles.walletInfo}>
               <View style={styles.walletTypeContainer}>
                 <ThemedText style={styles.walletType}>
@@ -175,13 +200,7 @@ function Wallets() {
                 {truncateAddress(wallet.address)}
               </ThemedText>
             </View>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeleteWallet(wallet)}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.deleteButtonText}>✕</ThemedText>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         ))}
         
         <TouchableOpacity
@@ -209,6 +228,13 @@ function Wallets() {
         onClose={handleCloseQRScanner}
         purpose="address"
         onScanComplete={handleHitoAddressScanned}
+      />
+      
+      <WalletDetailsSheet
+        isVisible={isWalletDetailsSheetVisible}
+        onClose={handleCloseWalletDetailsSheet}
+        onForget={handleDeleteWallet}
+        wallet={selectedWallet}
       />
     </ThemedView>
   );
@@ -255,7 +281,7 @@ const styles = StyleSheet.create({
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
-    padding: 10,
+    padding: 16,
   },
   walletInfo: {
     flex: 1,
@@ -280,28 +306,6 @@ const styles = StyleSheet.create({
   walletAddress: {
     fontSize: 14,
     color: '#b8b8b8',
-  },
-  deleteButton: {
-    width: 28,
-    height: 28,
-    marginLeft: 12,
-    backgroundColor: '#c0c0c0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderTopColor: '#e8e8e8',
-    borderLeftColor: '#e8e8e8',
-    borderBottomColor: '#555555',
-    borderRightColor: '#555555',
-  },
-  deleteButtonText: {
-    color: '#333333',
-    fontSize: 14,
-    fontWeight: 'bold',
-    lineHeight: 14,
   },
   connectButton: {
     backgroundColor: '#555555',
