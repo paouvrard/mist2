@@ -64,8 +64,29 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
   // Calculate status bar height to ensure content is below status bar/camera
   const statusBarHeight = Platform.OS === 'android' ? Math.max(insets.top, 24) : insets.top;
 
-  // Use React.useImperativeHandle to forward the WebView ref
-  React.useImperativeHandle(ref, () => webViewRef.current as WebView);
+  // Use React.useImperativeHandle to forward the WebView ref with our custom methods
+  React.useImperativeHandle(ref, () => ({
+    ...webViewRef.current,
+    // Add a custom navigate method that directly calls the WebView's loadUrl method
+    navigate: (newUrl: string) => {
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(`
+          window.location.href = "${newUrl}";
+          true;
+        `);
+      }
+    },
+    injectJavaScript: (script: string) => {
+      if (webViewRef.current) {
+        return webViewRef.current.injectJavaScript(script);
+      }
+    },
+    goBack: () => {
+      if (webViewRef.current) {
+        webViewRef.current.goBack();
+      }
+    }
+  }));
 
   // Don't render if no URL is provided
   if (!url) {
@@ -269,6 +290,26 @@ export default function AppsScreen() {
     } else {
       console.warn(`App with ID ${appId} not found`);
     }
+  };
+
+  // Force update the WebView with a new URL by recreating it
+  const reloadWebViewWithUrl = (appId: string, newUrl: string) => {
+    // Update the app instance state with the new URL
+    setAppInstances(prev => {
+      // Create a new object to ensure a re-render
+      return {
+        ...prev,
+        [appId]: {
+          ...prev[appId],
+          url: newUrl,
+          // Add a timestamp to force a WebView recreation
+          timestamp: Date.now()
+        }
+      };
+    });
+    
+    // Update UI state
+    setCurrentUrl(newUrl);
   };
 
   // Handle connection request from a WebView
@@ -1012,9 +1053,29 @@ export default function AppsScreen() {
 
   // Navigate to a URL and create a new app instance if needed
   const goToUrl = (input: string) => {
+    // Dismiss keyboard first to avoid UI issues
+    Keyboard.dismiss();
+    
     let processedUrl = input;
     if (!input.startsWith('http://') && !input.startsWith('https://')) {
       processedUrl = 'https://' + input;
+    }
+    
+    // If the URL is the same as the current URL and we have an active app,
+    // just reload the current page
+    if (activeAppId && appInstances[activeAppId] && 
+        (processedUrl === appInstances[activeAppId].url)) {
+      // Get the WebView reference
+      const webViewRef = webViewRefs.current[activeAppId];
+      
+      if (webViewRef) {
+        // Force a reload of the current page
+        webViewRef.injectJavaScript(`
+          window.location.reload(true);
+          true;
+        `);
+        return;
+      }
     }
     
     // First, check if this matches a favorite app
@@ -1034,6 +1095,12 @@ export default function AppsScreen() {
       if (matchedFavoriteApp) {
         // Use switchToApp which will create the instance if needed
         switchToApp(matchedFavoriteApp.id);
+        
+        // Force reload with the exact URL if it's different from the app's default
+        if (processedUrl !== matchedFavoriteApp.url) {
+          // Small timeout to ensure the app is fully mounted
+          setTimeout(() => reloadWebViewWithUrl(matchedFavoriteApp.id, processedUrl), 50);
+        }
         return;
       }
     } catch (error) {
@@ -1060,6 +1127,9 @@ export default function AppsScreen() {
     if (existingAppId) {
       // Reuse existing app instance
       switchToApp(existingAppId);
+      
+      // Force reload with the exact URL
+      reloadWebViewWithUrl(existingAppId, processedUrl);
     } else {
       // Create a new app instance with a dynamic ID
       const appId = `app_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -1070,7 +1140,8 @@ export default function AppsScreen() {
           isConnected: false,
           wallet: null,
           chainId: 1,
-          url: processedUrl
+          url: processedUrl,
+          timestamp: Date.now()
         }
       }));
       
