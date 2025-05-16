@@ -353,14 +353,14 @@ export function TransactionRequestSheet({
 
           {isViewOnly && (
             <ThemedText style={styles.warning}>
-              View-only wallet cannot approve the request
+              View-only wallet cannot authorize the request
             </ThemedText>
           )}
 
           {isWalletConnect && !address && !populatingTransaction && (
             <>
               <ThemedText style={styles.description}>
-                No wallet connected. Connect a wallet to approve this request.
+                No wallet connected. Connect a wallet to authorize this request.
               </ThemedText>
               <TouchableOpacity
                 style={styles.button}
@@ -395,7 +395,7 @@ export function TransactionRequestSheet({
               disabled={isLoading || populatingTransaction || isViewOnly}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Sending...' : 'Approve'}
+                {isLoading ? 'Sending...' : 'Authorize'}
               </ThemedText>
             </TouchableOpacity>
           )}
@@ -410,7 +410,7 @@ export function TransactionRequestSheet({
               disabled={isLoading || populatingTransaction}
               activeOpacity={0.8}>
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Connect your Hito to NFC...' : 'Approve with Hito'}
+                {isLoading ? 'Connect your Hito to NFC...' : 'Authorize with Hito'}
               </ThemedText>
             </TouchableOpacity>
           )}

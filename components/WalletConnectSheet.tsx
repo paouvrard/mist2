@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, Platform, ScrollView, View } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, TouchableOpacity, ScrollView, View, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -10,7 +10,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
@@ -34,9 +33,12 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const insets = useSafeAreaInsets();
-  const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const [isFullyVisible, setIsFullyVisible] = useState(false);
+  
+  // Get screen dimensions for max height calculation
+  const windowHeight = Dimensions.get('window').height;
+  const maxSheetHeight = windowHeight * 0.8; // Match other sheets
 
   useEffect(() => {
     if (isVisible) {
@@ -63,17 +65,17 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
     setWallets(savedWallets);
   };
 
-  const handleConnect = () => {
+  const handleConnect = useCallback(() => {
     if (selectedWallet && isFullyVisible) {
       onConnect(selectedWallet);
     }
-  };
+  }, [selectedWallet, isFullyVisible, onConnect]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isFullyVisible) {
       onClose();
     }
-  };
+  }, [isFullyVisible, onClose]);
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -81,6 +83,7 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    maxHeight: maxSheetHeight,
   }));
 
   if (!isRendered && !isVisible) {
@@ -97,15 +100,14 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
         ]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleClose} activeOpacity={1} />
       </Animated.View>
+      
       <Animated.View
         style={[
           styles.sheet,
-          {
-            backgroundColor: '#2a2a2a',
-            paddingBottom: insets.bottom + 25,
-          },
+          { backgroundColor: '#2a2a2a', paddingBottom: insets.bottom > 0 ? insets.bottom : 16 },
           sheetStyle,
         ]}>
+        {/* Title bar */}
         <View style={styles.titleBar}>
           <ThemedText type="title" style={styles.titleText}>
             Connect Wallet
@@ -114,37 +116,43 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
             <Ionicons name="close" size={16} color={textColor} />
           </TouchableOpacity>
         </View>
-        
-        <View style={styles.content}>
+
+        {/* Description */}
+        <View style={styles.descriptionContainer}>
           <ThemedText style={styles.description}>
             Select a wallet to connect to this website
           </ThemedText>
-          
-          <ScrollView style={styles.walletList} keyboardShouldPersistTaps="handled">
-            {wallets.map((wallet, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.walletOption,
-                  (selectedWallet?.address === wallet.address && selectedWallet?.type === wallet.type) &&
-                    styles.selectedWallet,
-                ]}
-                onPress={() => setSelectedWallet(wallet)}
-                activeOpacity={0.8}>
-                <ThemedText style={styles.walletType}>
-                  {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
-                </ThemedText>
-                <ThemedText style={styles.walletAddress}>
-                  {truncateAddress(wallet.address)}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        </View>
+        
+        {/* Main content with wallet list in scrollView */}
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}>
+          {wallets.map((wallet, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.walletOption,
+                (selectedWallet?.address === wallet.address && selectedWallet?.type === wallet.type) &&
+                  styles.selectedWallet,
+              ]}
+              onPress={() => setSelectedWallet(wallet)}
+              activeOpacity={0.8}>
+              <ThemedText style={styles.walletType}>
+                {wallet.type.charAt(0).toUpperCase() + wallet.type.slice(1)}
+              </ThemedText>
+              <ThemedText style={styles.walletAddress}>
+                {truncateAddress(wallet.address)}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
+        {/* Button container */}
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[
               styles.button,
-              styles.connectButton,
               !selectedWallet && styles.disabledButton,
             ]}
             onPress={handleConnect}
@@ -214,17 +222,20 @@ const styles = StyleSheet.create({
     borderBottomColor: '#555555',
     borderRightColor: '#555555',
   },
-  content: {
-    padding: 16,
-    gap: 16,
+  descriptionContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   description: {
     textAlign: 'center',
-    marginBottom: 16,
     color: '#e8e8e8',
   },
-  walletList: {
-    maxHeight: 300,
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  scrollContent: {
+    paddingBottom: 8,
   },
   walletOption: {
     padding: 16,
@@ -260,6 +271,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b8b8b8',
   },
+  buttonContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: '#2a2a2a',
+  },
   button: {
     padding: 16,
     alignItems: 'center',
@@ -267,14 +283,12 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderBottomWidth: 2,
     borderRightWidth: 2,
-    marginBottom: 12,
-  },
-  connectButton: {
     backgroundColor: '#555555',
     borderTopColor: '#888888',
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
+    marginBottom: 12,
   },
   disabledButton: {
     backgroundColor: '#444444',
@@ -282,13 +296,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#666666',
     borderBottomColor: '#333333',
     borderRightColor: '#333333',
-  },
-  cancelButton: {
-    backgroundColor: '#555555',
-    borderTopColor: '#888888',
-    borderLeftColor: '#888888',
-    borderBottomColor: '#444444',
-    borderRightColor: '#444444',
   },
   buttonText: {
     color: '#fff',

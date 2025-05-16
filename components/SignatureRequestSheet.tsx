@@ -212,7 +212,7 @@ export function SignatureRequestSheet({
 
           {isViewOnly && (
             <ThemedText style={styles.warning}>
-              View-only wallet cannot approve the request
+              View-only wallet cannot authorize the request
             </ThemedText>
           )}
 

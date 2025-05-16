@@ -1,11 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
+import { AppInfoSheet, AppDescription } from './AppInfoSheet';
 
 interface WelcomePageProps {
-  favoriteApps: Array<{ id: string; name: string; url: string; category: string }>;
+  favoriteApps: Array<{ id: string; name: string; url: string; category: string; description?: string }>;
   onAppSelect: (appId: string) => void;
 }
 
@@ -13,6 +15,11 @@ export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
   const insets = useSafeAreaInsets();
   const windowWidth = Dimensions.get('window').width;
   const cardWidth = (windowWidth - 48) / 2; // Accounting for padding and gap between cards
+
+  // State for the app info sheet
+  const [isAppInfoSheetVisible, setIsAppInfoSheetVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [appDescriptions, setAppDescriptions] = useState<AppDescription[]>([]);
   
   // Calculate proper top padding based on platform, matching index page
   const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
@@ -76,12 +83,37 @@ export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
     return { leftColumn: left, rightColumn: right };
   }, [sortedCategories]);
 
+  // Handle info button click for a category
+  const handleCategoryInfo = (category: string) => {
+    // Get apps for this category
+    const categoryApps = appsByCategory[category] || [];
+    
+    // Format app descriptions for the info sheet
+    const descriptions: AppDescription[] = categoryApps.map(app => ({
+      id: app.id,
+      name: app.name,
+      description: app.description || `No description available for ${app.name}.`
+    }));
+    
+    // Update state
+    setSelectedCategory(category);
+    setAppDescriptions(descriptions);
+    setIsAppInfoSheetVisible(true);
+  };
+
   // Render a category card
   const renderCategoryCard = (category: string) => (
     <View key={category} style={[styles.categoryCard, { width: cardWidth }]}>
-      <ThemedText style={styles.categoryTitle}>
-        {category.charAt(0).toUpperCase() + category.slice(1)}
-      </ThemedText>
+      <View style={styles.categoryTitleContainer}>
+        <ThemedText style={styles.categoryTitle}>
+          {category.charAt(0).toUpperCase() + category.slice(1)}
+        </ThemedText>
+        <TouchableOpacity 
+          style={styles.infoButton}
+          onPress={() => handleCategoryInfo(category)}>
+          <Ionicons name="information-circle" size={20} color="#b8b8b8" />
+        </TouchableOpacity>
+      </View>
       
       <View style={styles.appList}>
         {appsByCategory[category].map((app) => (
@@ -115,6 +147,14 @@ export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
           </View>
         </View>
       </ScrollView>
+
+      {/* App Info Sheet */}
+      <AppInfoSheet
+        isVisible={isAppInfoSheetVisible}
+        onClose={() => setIsAppInfoSheetVisible(false)}
+        categoryTitle={selectedCategory}
+        appDescriptions={appDescriptions}
+      />
     </ThemedView>
   );
 }
@@ -165,13 +205,26 @@ const styles = StyleSheet.create({
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
   },
+  categoryTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   categoryTitle: {
     fontSize: 16,
     color: '#e8e8e8',
-    marginBottom: 12,
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    flexShrink: 1,
+  },
+  infoButton: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   appList: {
     width: '100%',

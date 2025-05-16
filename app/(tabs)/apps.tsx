@@ -10,6 +10,7 @@ import { WalletInfoSheet } from '@/components/WalletInfoSheet';
 import { WelcomePage } from '@/components/WelcomePage';
 import { SignatureRequestSheet } from '@/components/SignatureRequestSheet';
 import { TransactionRequestSheet } from '@/components/TransactionRequestSheet';
+import { AppInfoSheet, AppDescription } from '@/components/AppInfoSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
@@ -17,17 +18,71 @@ import { Buffer } from 'buffer';
 import { getRpcUrl } from '@/utils/chains';
 import { Wallet } from '@/utils/walletStorage';
 
-// Define favorite apps
+// Define favorite apps with descriptions
 const favoriteApps = [
-  { id: 'zerion', name: 'Zerion', url: 'https://app.zerion.io', category: 'portfolio' },
-  { id: 'uniswap', name: 'Uniswap', url: 'https://app.uniswap.org', category: 'swap' },
-  { id: 'aave', name: 'Aave', url: 'https://app.aave.com', category: 'earn' },
-  { id: 'rainbow-bridge', name: 'Rainbow Bridge', url: 'https://rainbowbridge.app', category: 'bridge' },
-  { id: 'rainbow-bridge-testnet', name: 'Rainbow Bridge Testnet', url: 'https://testnet.rainbowbridge.app', category: 'testnet' },
-  { id: 'opensea', name: 'OpenSea', url: 'https://opensea.io', category: 'nft' },
-  { id: 'lens', name: 'Lens', url: 'https://hey.xyz', category: 'social' },
-  { id: 'rarible', name: 'Rarible', url: 'https://rarible.com', category: 'nft' },
-  { id: 'mycrypto', name: 'MyCrypto', url: 'https://app.mycrypto.com/sign-message', category: 'portfolio' },
+  { 
+    id: 'zerion', 
+    name: 'Zerion', 
+    url: 'https://app.zerion.io', 
+    category: 'portfolio',
+    description: 'A simple interface to track and manage your entire DeFi portfolio from one place. Monitor your assets across multiple wallets and networks.'
+  },
+  { 
+    id: 'uniswap', 
+    name: 'Uniswap', 
+    url: 'https://app.uniswap.org', 
+    category: 'swap',
+    description: 'A decentralized trading protocol, known for its role in facilitating automated trading of decentralized finance (DeFi) tokens.'
+  },
+  { 
+    id: 'aave', 
+    name: 'Aave', 
+    url: 'https://app.aave.com', 
+    category: 'earn',
+    description: 'An open source DeFi protocol that allows users to lend and borrow crypto assets without going through a centralized intermediary.'
+  },
+  { 
+    id: 'rainbow-bridge', 
+    name: 'Rainbow Bridge', 
+    url: 'https://rainbowbridge.app', 
+    category: 'bridge',
+    description: 'Transfer tokens between Ethereum and NEAR Protocol. Rainbow Bridge allows tokens to move seamlessly between blockchains.'
+  },
+  { 
+    id: 'rainbow-bridge-testnet', 
+    name: 'Rainbow Bridge Testnet', 
+    url: 'https://testnet.rainbowbridge.app', 
+    category: 'testnet',
+    description: 'Test version of Rainbow Bridge for transferring tokens between Ethereum and NEAR Protocol test networks.'
+  },
+  { 
+    id: 'opensea', 
+    name: 'OpenSea', 
+    url: 'https://opensea.io', 
+    category: 'nft',
+    description: 'The largest NFT marketplace for discovering, collecting, and trading digital assets. Buy, sell, and explore NFTs.'
+  },
+  { 
+    id: 'lens', 
+    name: 'Lens', 
+    url: 'https://hey.xyz', 
+    category: 'social',
+    description: 'A Web3 social graph protocol built on Polygon. Enables decentralized social networking experiences.'
+  },
+  { 
+    id: 'rarible', 
+    name: 'Rarible', 
+    url: 'https://rarible.com', 
+    category: 'nft',
+    description: 'A community-owned NFT marketplace. Create, sell, and collect digital items secured with blockchain.'
+  },
+  { 
+    id: 'mycrypto', 
+    name: 'MyCrypto', 
+    url: 'https://app.mycrypto.com/sign-message', 
+    category: 'portfolio',
+    description: 'A free, open-source interface for interacting with blockchains. Manage Ethereum wallets and sign messages.'
+  },
 ];
 
 // Interface for app connection state tracking
