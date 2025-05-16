@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
 import { useAccount, useWalletClient } from 'wagmi';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedView } from '@/components/ThemedView';
@@ -12,7 +13,7 @@ import { WalletTypeSheet } from '@/components/WalletTypeSheet';
 import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
 import { QRScannerSheet } from '@/components/QRScannerSheet';
 import { WalletDetailsSheet } from '@/components/WalletDetailsSheet';
-import { addWallet, getWallets, deleteWallet, type Wallet, truncateAddress } from '@/utils/walletStorage';
+import { addWallet, getWallets, deleteWallet, reorderWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
 import { HitoManager } from '@/utils/hito/hitoManager';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
 
@@ -23,6 +24,7 @@ function Wallets() {
   const [isWalletDetailsSheetVisible, setIsWalletDetailsSheetVisible] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const insets = useSafeAreaInsets();
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -122,8 +124,11 @@ function Wallets() {
   };
 
   const handleWalletCardPress = (wallet: Wallet) => {
-    setSelectedWallet(wallet);
-    setIsWalletDetailsSheetVisible(true);
+    // Only show wallet details if we're not in dragging mode
+    if (!isDragging) {
+      setSelectedWallet(wallet);
+      setIsWalletDetailsSheetVisible(true);
+    }
   };
 
   const handleCloseWalletDetailsSheet = () => {
@@ -171,44 +176,97 @@ function Wallets() {
     }
   };
 
+  const handleDragEnd = useCallback(async ({ from, to }: { from: number; to: number }) => {
+    // Update the dragging state
+    setIsDragging(false);
+    
+    // Save the new order to storage and update state
+    const updatedWallets = await reorderWallets(from, to);
+    setWallets(updatedWallets);
+  }, []);
+
   // Calculate proper top padding based on platform
   const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
+
+  const renderWalletItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<Wallet>) => {
+    const index = getIndex();
+    const isWallConn = isWalletConnected(item);
+    
+    // Track if this is a potential drag operation or just a tap
+    const pressStartTime = React.useRef<number>(0);
+    const handlePressIn = () => {
+      pressStartTime.current = Date.now();
+    };
+    
+    const handlePressOut = () => {
+      // If press duration is short, it's a tap, not a drag attempt
+      const pressDuration = Date.now() - pressStartTime.current;
+      if (pressDuration < 200) { // Less than 200ms is considered a tap
+        setIsDragging(false);
+      }
+    };
+
+    return (
+      <ScaleDecorator activeScale={1}>
+        <TouchableOpacity
+          onLongPress={drag}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={() => handleWalletCardPress(item)}
+          disabled={isActive}
+          activeOpacity={0.7}
+          style={[
+            styles.walletCard,
+            isActive && styles.walletCardDragging,
+          ]}>
+          <View style={styles.walletInfo}>
+            <View style={styles.walletTypeContainer}>
+              <ThemedText style={styles.walletType}>
+                {item.type}
+              </ThemedText>
+              {isWallConn && (
+                <View style={styles.connectionDot} />
+              )}
+            </View>
+            <ThemedText style={styles.walletAddress}>
+              {truncateAddress(item.address)}
+            </ThemedText>
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  }, [isDragging]);
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.titleContainer, { marginTop: titleTopPadding }]}>
         <ThemedText style={styles.titleText}>Wallets</ThemedText>
+        <TouchableOpacity
+          style={styles.newButton}
+          onPress={() => setIsWalletTypeSheetVisibleWithTabBar(true)}
+          activeOpacity={0.8}>
+          <ThemedText style={styles.buttonText}>+</ThemedText>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.contentContainer}>
-        {wallets.map((wallet, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.walletCard}
-            onPress={() => handleWalletCardPress(wallet)}
-            activeOpacity={0.7}>
-            <View style={styles.walletInfo}>
-              <View style={styles.walletTypeContainer}>
-                <ThemedText style={styles.walletType}>
-                  {wallet.type}
+        <View style={styles.walletListFrame}>
+          <DraggableFlatList
+            data={wallets}
+            keyExtractor={(item, index) => `${item.type}-${item.address}-${index}`}
+            renderItem={renderWalletItem}
+            onDragBegin={() => setIsDragging(true)}
+            onDragEnd={handleDragEnd}
+            containerStyle={{ flex: 1 }}
+            ListEmptyComponent={
+              <View style={styles.emptyListContainer}>
+                <ThemedText style={styles.emptyListText}>
+                  No wallets added yet
                 </ThemedText>
-                {isWalletConnected(wallet) && (
-                  <View style={styles.connectionDot} />
-                )}
               </View>
-              <ThemedText style={styles.walletAddress}>
-                {truncateAddress(wallet.address)}
-              </ThemedText>
-            </View>
-          </TouchableOpacity>
-        ))}
-        
-        <TouchableOpacity
-          style={styles.connectButton}
-          onPress={() => setIsWalletTypeSheetVisibleWithTabBar(true)}
-          activeOpacity={0.8}>
-          <ThemedText style={styles.buttonText}>Connect new wallet</ThemedText>
-        </TouchableOpacity>
+            }
+          />
+        </View>
       </View>
 
       <WalletTypeSheet
@@ -252,6 +310,9 @@ const styles = StyleSheet.create({
   titleContainer: {
     paddingHorizontal: 32,
     paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   titleText: {
     color: 'white',
@@ -259,14 +320,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'SpaceMono-Regular',
     letterSpacing: 0.5,  // Slightly wider letter spacing for that retro look
-    height: 40, // Explicitly set height to avoid text clipping
+    height: 36, // Explicitly set height to avoid text clipping
     lineHeight: 36, // Set proper line height to avoid clipping
     textAlign: 'left',
     textTransform: 'uppercase',  // Windows 95 often used uppercase for window titles
   },
   contentContainer: {
     flex: 1,
-    padding: 8, // Reduced from 16
+    paddingHorizontal: 2, // Reduced horizontal padding to allow frame to extend wider
+    paddingVertical: 8,
   },
   walletCard: {
     backgroundColor: '#3a3a3a',
@@ -325,5 +387,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  walletCardDragging: {
+    opacity: 0.8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+    transform: [{ scale: 0.95 }], // Changed from 1.02 to 0.95 to make the card smaller when dragging
+    borderTopColor: '#aaaaaa',
+    borderLeftColor: '#aaaaaa',
+    borderBottomColor: '#666666',
+    borderRightColor: '#666666',
+  },
+  walletListFrame: {
+    flex: 1,
+    marginHorizontal: 0, // Removed horizontal margin to make frame wider
+    padding: 8,
+    backgroundColor: '#2a2a2a', // Changed from #3a3a3a to match container background
+    // Removed all border properties to eliminate the frame
+  },
+  emptyListContainer: {
+    padding: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyListText: {
+    fontSize: 16,
+    color: '#b8b8b8',
+    fontFamily: 'SpaceMono-Regular',
+  },
+  newButton: {
+    backgroundColor: '#555555',
+    height: 36, // Fixed height that works well with the title
+    width: 36, // Make it square for better appearance
+    justifyContent: 'center', // Center the + text vertically
+    alignItems: 'center', // Center the + text horizontally
+    borderRadius: 4,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
   },
 });

@@ -10,6 +10,7 @@ import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit, defaultWagmiConfig, AppKit } from "@reown/appkit-wagmi-react-native";
 import { Platform, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -64,25 +65,27 @@ export default function RootLayout() {
   }
 
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <View style={[styles.container, { backgroundColor }]}>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <View style={styles.navigationContainer}>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="auto" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <View style={[styles.container, { backgroundColor }]}>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <View style={styles.navigationContainer}>
+                <Stack>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <StatusBar style="auto" />
+              </View>
+            </ThemeProvider>
+            {/* AppKit with higher z-index */}
+            <View style={styles.appKitContainer}>
+              <AppKit />
             </View>
-          </ThemeProvider>
-          {/* AppKit with higher z-index */}
-          <View style={styles.appKitContainer}>
-            <AppKit />
           </View>
-        </View>
-      </QueryClientProvider>
-    </WagmiProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </GestureHandlerRootView>
   );
 }
 

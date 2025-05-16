@@ -76,3 +76,22 @@ export async function deleteWallet(wallet: Wallet): Promise<void> {
   );
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 }
+
+export async function reorderWallets(fromIndex: number, toIndex: number): Promise<Wallet[]> {
+  const wallets = await getWallets();
+  
+  if (fromIndex < 0 || fromIndex >= wallets.length || toIndex < 0 || toIndex >= wallets.length) {
+    return wallets;
+  }
+
+  // Remove the wallet from its original position
+  const [movedWallet] = wallets.splice(fromIndex, 1);
+  
+  // Insert the wallet at the new position
+  wallets.splice(toIndex, 0, movedWallet);
+  
+  // Save the reordered list
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
+  
+  return wallets;
+}
