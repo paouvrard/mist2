@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
 import { useAccount, useWalletClient } from 'wagmi';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { Ionicons } from '@expo/vector-icons';
 
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedView } from '@/components/ThemedView';
@@ -13,6 +14,8 @@ import { WalletTypeSheet } from '@/components/WalletTypeSheet';
 import { ViewOnlyAddressSheet } from '@/components/ViewOnlyAddressSheet';
 import { QRScannerSheet } from '@/components/QRScannerSheet';
 import { WalletDetailsSheet } from '@/components/WalletDetailsSheet';
+import { WalletDescriptionSheet } from '@/components/WalletDescriptionSheet';
+import { WalletDescriptionFrame } from '@/components/WalletDescriptionFrame';
 import { addWallet, getWallets, deleteWallet, reorderWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
 import { HitoManager } from '@/utils/hito/hitoManager';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
@@ -22,6 +25,7 @@ function Wallets() {
   const [isViewOnlyAddressSheetVisible, setIsViewOnlyAddressSheetVisible] = useState(false);
   const [isQRScannerVisible, setIsQRScannerVisible] = useState(false);
   const [isWalletDetailsSheetVisible, setIsWalletDetailsSheetVisible] = useState(false);
+  const [isWalletDescriptionSheetVisible, setIsWalletDescriptionSheetVisible] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -36,9 +40,10 @@ function Wallets() {
     const shouldHideTabBar = isWalletTypeSheetVisible || 
                             isViewOnlyAddressSheetVisible || 
                             isQRScannerVisible ||
-                            isWalletDetailsSheetVisible;
+                            isWalletDetailsSheetVisible ||
+                            isWalletDescriptionSheetVisible;
     setHideTabBar(shouldHideTabBar);
-  }, [isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible, setHideTabBar]);
+  }, [isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible, isWalletDescriptionSheetVisible, setHideTabBar]);
 
   // Ensure tab bar is visible whenever Wallets is focused
   useFocusEffect(
@@ -47,13 +52,14 @@ function Wallets() {
       if (!isWalletTypeSheetVisible && 
           !isViewOnlyAddressSheetVisible && 
           !isQRScannerVisible &&
-          !isWalletDetailsSheetVisible) {
+          !isWalletDetailsSheetVisible &&
+          !isWalletDescriptionSheetVisible) {
         setHideTabBar(false);
       }
       return () => {
         // No cleanup needed
       };
-    }, [setHideTabBar, isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible])
+    }, [setHideTabBar, isWalletTypeSheetVisible, isViewOnlyAddressSheetVisible, isQRScannerVisible, isWalletDetailsSheetVisible, isWalletDescriptionSheetVisible])
   );
 
   const loadWallets = async () => {
@@ -134,6 +140,14 @@ function Wallets() {
   const handleCloseWalletDetailsSheet = () => {
     setIsWalletDetailsSheetVisible(false);
     setSelectedWallet(null);
+  };
+  
+  const handleOpenWalletDescriptionSheet = () => {
+    setIsWalletDescriptionSheetVisible(true);
+  };
+
+  const handleCloseWalletDescriptionSheet = () => {
+    setIsWalletDescriptionSheetVisible(false);
   };
 
   const setIsWalletTypeSheetVisibleWithTabBar = (visible: boolean) => {
@@ -236,10 +250,23 @@ function Wallets() {
     );
   }, [isDragging, isConnected, address]); // Added isConnected and address to dependencies
 
+  // Determine if we have any wallets
+  const hasWallets = wallets.length > 0;
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.titleContainer, { marginTop: titleTopPadding }]}>
-        <ThemedText style={styles.titleText}>Wallets</ThemedText>
+        <View style={styles.titleWithInfoContainer}>
+          <ThemedText style={styles.titleText}>Wallets</ThemedText>
+          {hasWallets && (
+            <TouchableOpacity
+              style={styles.infoButton}
+              onPress={handleOpenWalletDescriptionSheet}
+              activeOpacity={0.8}>
+              <Ionicons name="information-circle" size={20} color="#b8b8b8" />
+            </TouchableOpacity>
+          )}
+        </View>
         <TouchableOpacity
           style={styles.newButton}
           onPress={() => setIsWalletTypeSheetVisibleWithTabBar(true)}
@@ -262,6 +289,7 @@ function Wallets() {
                 <ThemedText style={styles.emptyListText}>
                   No wallets added yet
                 </ThemedText>
+                <WalletDescriptionFrame />
               </View>
             }
           />
@@ -293,6 +321,11 @@ function Wallets() {
         onForget={handleDeleteWallet}
         wallet={selectedWallet}
       />
+
+      <WalletDescriptionSheet
+        isVisible={isWalletDescriptionSheetVisible}
+        onClose={handleCloseWalletDescriptionSheet}
+      />
     </ThemedView>
   );
 }
@@ -304,13 +337,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#2a2a2a', // Darker gray background similar to WalletTypeSheet
-    padding: 16,
+    paddingTop: 16,
   },
   titleContainer: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 16, // Added proper horizontal padding
     paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  titleWithInfoContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   titleText: {
@@ -326,7 +363,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 2, // Reduced horizontal padding to allow frame to extend wider
+    paddingHorizontal: 16, // Added proper horizontal padding
     paddingVertical: 8,
   },
   walletCard: {
@@ -402,13 +439,14 @@ const styles = StyleSheet.create({
   },
   walletListFrame: {
     flex: 1,
-    marginHorizontal: 0, // Removed horizontal margin to make frame wider
-    padding: 8,
-    backgroundColor: '#2a2a2a', // Changed from #3a3a3a to match container background
-    // Removed all border properties to eliminate the frame
+    marginHorizontal: 0,
+    padding: 0, // Remove padding that might interfere with WalletDescriptionFrame
+    backgroundColor: '#2a2a2a',
   },
   emptyListContainer: {
-    padding: 40,
+    padding: 0, // Remove padding
+    paddingTop: 20, // Add top padding only
+    width: '100%', // Ensure full width
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -416,6 +454,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#b8b8b8',
     fontFamily: 'SpaceMono-Regular',
+    marginBottom: 12,
   },
   newButton: {
     backgroundColor: '#555555',
@@ -432,5 +471,10 @@ const styles = StyleSheet.create({
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
+  },
+  infoButton: {
+    marginLeft: 8, // Space between the title and button
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

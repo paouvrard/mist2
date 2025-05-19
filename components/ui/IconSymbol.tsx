@@ -14,6 +14,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'chevron.left': 'chevron-left',
   'safari.fill': 'public',
+  'info': 'info',
 } as const;
 
 type IconName = keyof typeof MAPPING;

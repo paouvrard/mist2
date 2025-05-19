@@ -1,8 +1,35 @@
-# Welcome to your Expo app 👋
+# Welcome to Mist2 ☁️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This started out as an experiment to use Claud 3.7 and it became this app. AI wrote 98% of the code, particularly the UI components. But using libraries like viem and interacting with hardware wallets required a lot of human fixes and review of the critical logic.
+
+
+## What is Mist2?
+
+Mist2 is your minimalist mobile Ethereum app gateway. It focuses on wallet connectivity, accessibility, privacy and security.
+
+There are few mobile wallets with hardware wallet support for using Ethereum apps (mainly only MetaMask), WalletConnect can become unavailable for any reason (bridge network, app bug, wallet bug...), your favorite mobile wallet doesn't support all hardware wallets if any, your favorite app might not support WalletConnect, WalletConnect browser redirects are buggy and add an extra step.
+
+Simplify: explore Ethereum apps without managing embedded browser tabs.
+
+Focus on wallet connectivity, embedded browser apps can manage your portfolio.
+
+If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
+
+### Key Features:
+
+- Hardware wallet support on the go
+- Manage multiple wallets: for privacy it is recommended to use many different addresses and to avoid linking them on-chain
+- Drag and drop to organise your wallets
+- **Privacy-focused**: No tracking or data collection, this is a tool not a product
+- Open source
+
+### Disclaimer
+
+Mist2 is a self-custody wallet. You are responsible for securing your private keys and recovery phrases. We do not store your keys, collect your data, or have the ability to recover funds. Always review transactions and messages before signing them.
 
 ## Get started
+
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 1. Install dependencies
 
