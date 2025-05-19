@@ -35,6 +35,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <data android:scheme="wc"/>
         <data android:scheme="hito"/>
+        <data android:scheme="exp+mist2"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
       </intent-filter>
