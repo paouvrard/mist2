@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -50,6 +50,8 @@ export function TransactionRequestSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [hitoMessageSent, setHitoMessageSent] = useState(false);
+  const [walletConnectSending, setWalletConnectSending] = useState(false);
   
   const [populatingTransaction, setPopulatingTransaction] = useState(false);
   const [populatedTransaction, setPopulatedTransaction] = useState<Transaction | null>(null);
@@ -68,7 +70,7 @@ export function TransactionRequestSheet({
   
   // Get screen dimensions for max height calculation
   const windowHeight = Dimensions.get('window').height;
-  const maxSheetHeight = windowHeight * 0.8;
+  const maxSheetHeight = windowHeight * 0.9;
 
   useEffect(() => {
     if (isVisible) {
@@ -109,6 +111,8 @@ export function TransactionRequestSheet({
           runOnJS(setIsLoading)(false);
           runOnJS(setShowQRScanner)(false);
           runOnJS(setPopulationError)(null);
+          runOnJS(setHitoMessageSent)(false);
+          runOnJS(setWalletConnectSending)(false);
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
@@ -131,17 +135,10 @@ export function TransactionRequestSheet({
         }
         
         await hitoManager.writeTransactionToNFC(populatedTransaction, currentWallet.address);
-        
-        Alert.alert(
-          'Transaction Sent to Hito',
-          'Please sign the transaction on your Hito device, then scan the QR code with the signature.',
-          [
-            { text: 'Scan Signature', onPress: () => setShowQRScanner(true) }
-          ]
-        );
-        
+        setHitoMessageSent(true);
         setIsLoading(false);
       } else if (currentWallet.type === 'wallet-connect') {
+        setWalletConnectSending(true);
         await switchChain(wagmiConfig, { chainId: currentChainId });
         const hash = await sendTransaction(wagmiConfig, populatedTransaction);
         
@@ -163,6 +160,7 @@ export function TransactionRequestSheet({
         setError('Failed to send transaction');
       }
       setIsLoading(false);
+      setWalletConnectSending(false);
     }
   };
 
@@ -345,8 +343,7 @@ export function TransactionRequestSheet({
               </ThemedText>
             )}
           </View>
-        </ScrollView>
-        <View>
+
           {error && (
             <ThemedText style={styles.error}>{error}</ThemedText>
           )}
@@ -356,7 +353,9 @@ export function TransactionRequestSheet({
               View-only wallet cannot authorize the request
             </ThemedText>
           )}
+        </ScrollView>
 
+        <View style={styles.buttonContainer}>
           {isWalletConnect && !address && !populatingTransaction && (
             <>
               <ThemedText style={styles.description}>
@@ -385,34 +384,100 @@ export function TransactionRequestSheet({
             </>
           )}
 
-          {isWalletConnect && accountMatches && !populatingTransaction && (
-            <TouchableOpacity
-              style={[
-                styles.button,
-                (isLoading || populatingTransaction || isViewOnly) && styles.disabledButton,
-              ]}
-              onPress={handleApprove}
-              disabled={isLoading || populatingTransaction || isViewOnly}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Sending...' : 'Authorize'}
-              </ThemedText>
-            </TouchableOpacity>
+          {isWalletConnect && accountMatches && !populatingTransaction && !walletConnectSending && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  This will send a transaction request to your connected wallet. Check the transaction details above before proceeding.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  (isLoading || populatingTransaction || isViewOnly) && styles.disabledButton,
+                ]}
+                onPress={handleApprove}
+                disabled={isLoading || populatingTransaction || isViewOnly}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Authorize
+                </ThemedText>
+              </TouchableOpacity>
+            </>
           )}
           
-          {isHito && !populatingTransaction && (
-            <TouchableOpacity
-              style={[
-                styles.button,
-                (isLoading || populatingTransaction) && styles.disabledButton,
-              ]}
-              onPress={handleApprove}
-              disabled={isLoading || populatingTransaction}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Connect your Hito to NFC...' : 'Authorize with Hito'}
-              </ThemedText>
-            </TouchableOpacity>
+          {isWalletConnect && walletConnectSending && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Transaction sent to your wallet app. Please check your wallet app and confirm the transaction.
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.button,
+                  styles.disabledButton
+                ]}>
+                <ThemedText style={styles.buttonText}>
+                  Waiting for confirmation...
+                </ThemedText>
+              </View>
+            </>
+          )}
+          
+          {isHito && !populatingTransaction && !hitoMessageSent && !isLoading && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  This will send the transaction to your Hito device via NFC.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleApprove}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Authorize with Hito
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          )}
+          
+          {isHito && isLoading && !hitoMessageSent && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Select SEND in your Hito device and hold your phone near to transfer the transaction data.
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.button,
+                  styles.disabledButton
+                ]}>
+                <ThemedText style={styles.buttonText}>
+                  Sending to Hito...
+                </ThemedText>
+              </View>
+            </>
+          )}
+          
+          {isHito && hitoMessageSent && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Sign the transaction on your device, then scan the QR code with the signature.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setShowQRScanner(true)}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Scan Signature QR Code
+                </ThemedText>
+              </TouchableOpacity>
+            </>
           )}
         </View>
       </Animated.View>
@@ -561,11 +626,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderBottomWidth: 2,
     borderRightWidth: 2,
-    borderTopColor: '#888888',
+    borderTopColor: '#888888', 
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
-    marginBottom: 12,
   },
   disabledButton: {
     backgroundColor: '#444444',
@@ -578,5 +642,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  instructionsContainer: {
+    backgroundColor: '#3a3a3a',
+    padding: 16,
+    marginBottom: 0,
+    marginTop: 16,
+    borderRadius: 0,
+  },
+  instructions: {
+    color: '#e8e8e8',
+    textAlign: 'center',
+  },
+  scanButton: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#0a7a8c',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#0d8fa6',
+    borderLeftColor: '#0d8fa6',
+    borderBottomColor: '#086475',
+    borderRightColor: '#086475',
+    marginBottom: 6,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  buttonContainer: {
+    padding: 16,
+    paddingTop: 0,
   },
 });

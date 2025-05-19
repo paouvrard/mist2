@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Alert, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -49,6 +49,8 @@ export function SignatureRequestSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [hitoMessageSent, setHitoMessageSent] = useState(false);
+  const [walletConnectSending, setWalletConnectSending] = useState(false);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -72,6 +74,8 @@ export function SignatureRequestSheet({
           runOnJS(setError)(null);
           runOnJS(setIsLoading)(false);
           runOnJS(setShowQRScanner)(false);
+          runOnJS(setHitoMessageSent)(false);
+          runOnJS(setWalletConnectSending)(false);
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
@@ -94,17 +98,10 @@ export function SignatureRequestSheet({
         }
         
         await hitoManager.writeMessageToNFC(message, currentWallet.address);
-        
-        Alert.alert(
-          'Message Sent to Hito',
-          'Please sign the message on your Hito device, then scan the QR code with the signature.',
-          [
-            { text: 'Scan Signature', onPress: () => setShowQRScanner(true) }
-          ]
-        );
-        
+        setHitoMessageSent(true);
         setIsLoading(false);
       } else if (currentWallet.type === 'wallet-connect') {
+        setWalletConnectSending(true);
         await switchChain(wagmiConfig, { chainId: currentChainId });
         const signature = await signMessage(wagmiConfig, { message });
         
@@ -122,6 +119,7 @@ export function SignatureRequestSheet({
       console.error('Message signing error:', err);
       setError(err instanceof Error ? err.message : 'Failed to sign message');
       setIsLoading(false);
+      setWalletConnectSending(false);
     }
   };
 
@@ -215,7 +213,9 @@ export function SignatureRequestSheet({
               View-only wallet cannot authorize the request
             </ThemedText>
           )}
-
+        </ScrollView>
+        
+        <View style={styles.buttonContainer}>
           {isWalletConnect && !address && (
             <>
               <ThemedText style={styles.description}>
@@ -244,36 +244,102 @@ export function SignatureRequestSheet({
             </>
           )}
 
-          {isWalletConnect && accountMatches && (
-            <TouchableOpacity
-              style={[
-                styles.button,
-                (isLoading || isViewOnly) && styles.disabledButton,
-              ]}
-              onPress={handleApprove}
-              disabled={isLoading || isViewOnly}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Sign the request in your wallet...' : 'Sign with WalletConnect'}
-              </ThemedText>
-            </TouchableOpacity>
+          {isWalletConnect && accountMatches && !walletConnectSending && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  This will send a signature request to your connected wallet. Check the message above before proceeding.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  (isLoading || isViewOnly) && styles.disabledButton,
+                ]}
+                onPress={handleApprove}
+                disabled={isLoading || isViewOnly}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Sign with WalletConnect
+                </ThemedText>
+              </TouchableOpacity>
+            </>
           )}
           
-          {isHito && (
-            <TouchableOpacity
-              style={[
-                styles.button,
-                isLoading && styles.disabledButton,
-              ]}
-              onPress={handleApprove}
-              disabled={isLoading}
-              activeOpacity={0.8}>
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Connect your Hito to NFC...' : 'Sign with Hito'}
-              </ThemedText>
-            </TouchableOpacity>
+          {isWalletConnect && walletConnectSending && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Signature request sent to your wallet app. Please check your wallet app and confirm the signature.
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.button,
+                  styles.disabledButton
+                ]}>
+                <ThemedText style={styles.buttonText}>
+                  Waiting for signature...
+                </ThemedText>
+              </View>
+            </>
           )}
-        </ScrollView>
+          
+          {isHito && !hitoMessageSent && !isLoading && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  This will send the message to your Hito device via NFC.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleApprove}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Sign with Hito
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          )}
+          
+          {isHito && isLoading && !hitoMessageSent && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Select SEND in your Hito device and hold your phone near to transfer the message data.
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.button,
+                  styles.disabledButton
+                ]}>
+                <ThemedText style={styles.buttonText}>
+                  Sending to Hito...
+                </ThemedText>
+              </View>
+            </>
+          )}
+
+          {isHito && hitoMessageSent && (
+            <>
+              <View style={styles.instructionsContainer}>
+                <ThemedText style={styles.instructions}>
+                  Sign the message on your device, then scan the QR code with the signature.
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={() => setShowQRScanner(true)}
+                activeOpacity={0.8}>
+                <ThemedText style={styles.buttonText}>
+                  Scan Signature QR Code
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </Animated.View>
       
       <QRScannerSheet
@@ -356,7 +422,7 @@ const styles = StyleSheet.create({
   messageContainer: {
     backgroundColor: '#3a3a3a',
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 0,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderBottomWidth: 1,
@@ -410,5 +476,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  instructionsContainer: {
+    backgroundColor: '#3a3a3a',
+    padding: 16,
+    marginBottom: 0,
+    borderRadius: 0,
+  },
+  instructions: {
+    color: '#e8e8e8',
+    textAlign: 'center',
+  },
+  scanButton: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#0a7a8c',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#0d8fa6',
+    borderLeftColor: '#0d8fa6',
+    borderBottomColor: '#086475',
+    borderRightColor: '#086475',
+    marginBottom: 12,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  buttonContainer: {
+    padding: 16,
+    paddingTop: 0,
   },
 });
