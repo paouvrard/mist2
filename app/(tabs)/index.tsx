@@ -29,6 +29,8 @@ function Wallets() {
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  // Add a loading state to prevent wallet description from flashing
+  const [isLoadingWallets, setIsLoadingWallets] = useState(true);
   const insets = useSafeAreaInsets();
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -63,8 +65,10 @@ function Wallets() {
   );
 
   const loadWallets = async () => {
+    setIsLoadingWallets(true); // Start loading
     const savedWallets = await getWallets();
     setWallets(savedWallets);
+    setIsLoadingWallets(false); // End loading
   };
 
   const handleAddWallet = async (wallet: Wallet) => {
@@ -285,12 +289,16 @@ function Wallets() {
             onDragEnd={handleDragEnd}
             containerStyle={{ flex: 1 }}
             ListEmptyComponent={
-              <View style={styles.emptyListContainer}>
-                <ThemedText style={styles.emptyListText}>
-                  No wallets added yet
-                </ThemedText>
-                <WalletDescriptionFrame />
-              </View>
+              !isLoadingWallets ? (
+                <View style={styles.emptyListContainer}>
+                  <ThemedText style={styles.emptyListText}>
+                    No wallets added yet
+                  </ThemedText>
+                  <WalletDescriptionFrame />
+                </View>
+              ) : (
+                <></>
+              )
             }
           />
         </View>

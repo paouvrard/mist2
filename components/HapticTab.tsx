@@ -32,10 +32,10 @@ export function HapticTab(props: BottomTabBarButtonProps) {
         styles.innerButtonContainer,
         {
           backgroundColor: isFocused ? baseColor : 'transparent',
-          borderTopWidth: 2,
-          borderLeftWidth: 2,
-          borderRightWidth: 2,
-          borderBottomWidth: 2,
+          borderTopWidth: 3,
+          borderLeftWidth: 3,
+          borderRightWidth: 3,
+          borderBottomWidth: 3,
           borderTopColor: isFocused ? highlightColor : 'transparent',
           borderLeftColor: isFocused ? highlightColor : 'transparent',
           borderRightColor: isFocused ? shadowColor : 'transparent',
@@ -44,7 +44,7 @@ export function HapticTab(props: BottomTabBarButtonProps) {
         // Android-specific shadow for 3D effect
         isAndroid && isFocused && styles.androidFocusedButton,
         // iOS transform for pressed effect
-        !isAndroid && isFocused && { transform: [{ translateY: 1 }] }
+        !isAndroid && isFocused && { transform: [{ translateY: 2 }] }
       ]}>
         {props.children}
       </View>
@@ -73,13 +73,13 @@ const styles = StyleSheet.create({
     height: '100%', // Fill the full height
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
+    borderRadius: 0, // Remove border radius completely
   },
   androidFocusedButton: {
-    elevation: 4, // Add Android elevation for 3D effect
+    elevation: 6, // Increase Android elevation for more pronounced 3D effect
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
   },
 });
