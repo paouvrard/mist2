@@ -24,6 +24,7 @@ interface Props {
   onClose: () => void;
   categoryTitle: string;
   appDescriptions: AppDescription[];
+  onClearData?: (appId: string) => void;
 }
 
 const SPRING_CONFIG = {
@@ -31,12 +32,14 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions }: Props) {
+export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
   const insets = useSafeAreaInsets();
   const textColor = useThemeColor({}, 'text');
+  // Add state to track which apps have been cleared
+  const [clearedApps, setClearedApps] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isVisible) {
@@ -50,6 +53,8 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
+      // Reset cleared state when sheet is closed
+      setClearedApps({});
     }
   }, [isVisible]);
 
@@ -60,6 +65,22 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
+
+  // Handle clear data with temporary "Cleared!" text
+  const handleClearData = (appId: string) => {
+    if (onClearData) {
+      // Update state to show "Cleared!" text
+      setClearedApps(prev => ({ ...prev, [appId]: true }));
+      
+      // Call the original handler
+      onClearData(appId);
+      
+      // Reset text after 1 second
+      setTimeout(() => {
+        setClearedApps(prev => ({ ...prev, [appId]: false }));
+      }, 1000);
+    }
+  };
 
   if (!isRendered && !isVisible) {
     return null;
@@ -102,6 +123,16 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
                 <ThemedText style={styles.appDescription}>
                   {app.description}
                 </ThemedText>
+                {onClearData && (
+                  <TouchableOpacity 
+                    style={styles.clearButton} 
+                    onPress={() => handleClearData(app.id)}
+                  >
+                    <ThemedText style={styles.clearButtonText}>
+                      {clearedApps[app.id] ? 'Cleared !' : 'Clear Data'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
               </View>
             ))
           ) : (
@@ -198,6 +229,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#b8b8b8',
+    marginBottom: 12,
+  },
+  clearButton: {
+    backgroundColor: '#555555',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  clearButtonText: {
+    color: '#FF9999',
+    fontSize: 14,
+    fontWeight: '500',
   },
   noAppsContainer: {
     padding: 20,

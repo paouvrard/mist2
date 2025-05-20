@@ -9,9 +9,10 @@ import { AppInfoSheet, AppDescription } from './AppInfoSheet';
 interface WelcomePageProps {
   favoriteApps: Array<{ id: string; name: string; url: string; category: string; description?: string }>;
   onAppSelect: (appId: string) => void;
+  onClearAppData?: (appId: string) => void;
 }
 
-export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
+export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: WelcomePageProps) {
   const insets = useSafeAreaInsets();
   const windowWidth = Dimensions.get('window').width;
   const cardWidth = (windowWidth - 48) / 2; // Accounting for padding and gap between cards
@@ -154,6 +155,7 @@ export function WelcomePage({ favoriteApps, onAppSelect }: WelcomePageProps) {
         onClose={() => setIsAppInfoSheetVisible(false)}
         categoryTitle={selectedCategory}
         appDescriptions={appDescriptions}
+        onClearData={onClearAppData}
       />
     </ThemedView>
   );

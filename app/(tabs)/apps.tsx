@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView, BackHandler } from 'react-native';
+import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView, BackHandler, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -374,6 +374,109 @@ export default function AppsScreen() {
     
     // Update UI state
     setCurrentUrl(newUrl);
+  };
+
+  // Handle clearing app data (cache, local storage, cookies, history)
+  const handleClearAppData = (appId: string) => {
+    // Find the app in favorites if it doesn't exist in instances yet
+    const favoriteApp = favoriteApps.find(app => app.id === appId);
+    let appUrl = '';
+    let needToCreateInstance = false;
+    
+    if (appInstances[appId]) {
+      // App already exists as an instance
+      appUrl = appInstances[appId].url;
+    } else if (favoriteApp) {
+      // App exists in favorites but not as an instance yet
+      appUrl = favoriteApp.url;
+      needToCreateInstance = true;
+    } else {
+      console.warn(`Cannot clear data for unknown app ID: ${appId}`);
+      return;
+    }
+    
+    // JavaScript to clear all storage types
+    const clearDataScript = `
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+      
+      // Clear cookies
+      document.cookie.split(';').forEach(function(c) {
+        document.cookie = c.trim().split('=')[0] + '=;' + 'expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+      });
+      
+      // Clear cache via reload with cache disabled
+      // Setting no-cache headers for all future requests
+      window.caches && window.caches.keys().then(function(names) {
+        for (let name of names) window.caches.delete(name);
+      });
+      
+      // Clear IndexedDB databases
+      window.indexedDB && window.indexedDB.databases && window.indexedDB.databases().then(function(dbs) {
+        dbs.forEach(function(db) {
+          window.indexedDB.deleteDatabase(db.name);
+        });
+      });
+      
+      // Clear application cache (deprecated, but some sites still use it)
+      window.applicationCache && window.applicationCache.abort && window.applicationCache.abort();
+      
+      // Force a hard reload of the page to apply all changes
+      setTimeout(function() {
+        window.location.reload(true);
+      }, 100);
+      
+      // Return true to satisfy WebView.injectJavaScript requirement
+      true;
+    `;
+    
+    if (needToCreateInstance) {
+      // Create an instance for this app first
+      const newAppId = appId;
+      
+      // Create the app instance
+      setAppInstances(prev => ({
+        ...prev,
+        [newAppId]: {
+          isConnected: false,
+          wallet: null,
+          chainId: 1,
+          url: appUrl,
+          timestamp: Date.now() // Add timestamp to ensure WebView is created fresh
+        }
+      }));
+      
+      // Set this as the active app
+      setActiveAppId(newAppId);
+      setCurrentUrl(appUrl);
+      setShowWelcome(false);
+      
+      // Allow a moment for the WebView to initialize before injecting script
+      setTimeout(() => {
+        const webViewRef = webViewRefs.current[newAppId];
+        if (webViewRef) {
+          webViewRef.injectJavaScript(clearDataScript);
+        }
+      }, 1000); // Wait a second for the WebView to initialize
+      
+    } else {
+      // Use existing app instance
+      const webViewRef = webViewRefs.current[appId];
+      
+      // If the app isn't already active, make it active first
+      if (appId !== activeAppId) {
+        setActiveAppId(appId);
+        setCurrentUrl(appUrl);
+        setShowWelcome(false);
+      }
+      
+      if (webViewRef) {
+        webViewRef.injectJavaScript(clearDataScript);
+      }
+    }
   };
 
   // Handle connection request from a WebView
@@ -1117,7 +1220,6 @@ export default function AppsScreen() {
 
   // Navigate to a URL and create a new app instance if needed
   const goToUrl = (input: string) => {
-    // Dismiss keyboard first to avoid UI issues
     Keyboard.dismiss();
     
     let processedUrl = input;
@@ -1243,7 +1345,8 @@ export default function AppsScreen() {
         <View style={styles.welcomeContainer}>
           <WelcomePage 
             favoriteApps={favoriteApps} 
-            onAppSelect={switchToApp} 
+            onAppSelect={switchToApp}
+            onClearAppData={handleClearAppData}
           />
         </View>
       )}
