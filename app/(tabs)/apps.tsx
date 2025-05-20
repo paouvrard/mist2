@@ -83,6 +83,13 @@ const favoriteApps = [
     category: 'portfolio',
     description: 'A free, open-source interface for interacting with blockchains. Manage Ethereum wallets and sign messages.'
   },
+  { 
+    id: 'safe', 
+    name: 'Safe', 
+    url: 'https://app.safe.global', 
+    category: 'smart wallet',
+    description: 'The OG multi-signature wallet. A smart contract wallet that supports multiple keys and recovery methods.'
+  },
 ];
 
 // Interface for app connection state tracking
@@ -176,8 +183,10 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
         contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
         automaticallyAdjustContentInsets={false}
         androidLayerType="hardware"
-        // Set explicit content insets to zero since we're handling this with a View
-        contentInset={{ top: 0, left: 0, right: 0, bottom: 0 }}
+        // Add content inset to account for navigation bar
+        contentInset={{ top: 0, left: 0, right: 0, bottom: 40 }}
+        // Add containerStyle to ensure proper padding on Android
+        containerStyle={{ paddingBottom: 40 }}
         // Explicitly override any default styling from the webview
         originWhitelist={['*']}
         incognito={false}
