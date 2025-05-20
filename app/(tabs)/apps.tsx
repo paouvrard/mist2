@@ -467,11 +467,9 @@ export default function AppsScreen() {
       const webViewRef = webViewRefs.current[appId];
       
       // If the app isn't already active, make it active first
-      if (appId !== activeAppId) {
-        setActiveAppId(appId);
-        setCurrentUrl(appUrl);
-        setShowWelcome(false);
-      }
+      setActiveAppId(appId);
+      setCurrentUrl(appUrl);
+      setShowWelcome(false);
       
       if (webViewRef) {
         webViewRef.injectJavaScript(clearDataScript);

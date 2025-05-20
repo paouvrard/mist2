@@ -135,7 +135,10 @@ export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: Welco
         <ThemedText style={styles.titleText}>APPS</ThemedText>
       </View>
       
-      <ScrollView style={styles.contentContainer}>
+      <ScrollView 
+        style={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}>
         <View style={styles.columnsContainer}>
           {/* Left Column */}
           <View style={styles.column}>

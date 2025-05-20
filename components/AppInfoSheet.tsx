@@ -129,7 +129,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
                     onPress={() => handleClearData(app.id)}
                   >
                     <ThemedText style={styles.clearButtonText}>
-                      {clearedApps[app.id] ? 'Cleared !' : 'Clear Data'}
+                      Clear Data
                     </ThemedText>
                   </TouchableOpacity>
                 )}

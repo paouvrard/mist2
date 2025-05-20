@@ -198,7 +198,10 @@ export function SignatureRequestSheet({
           </TouchableOpacity>
         </View>
         
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <ScrollView style={styles.scrollView} 
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}>
           <View style={styles.messageContainer}>
             <ThemedText style={styles.messageLabel}>Message:</ThemedText>
             <ThemedText style={styles.message}>{message}</ThemedText>

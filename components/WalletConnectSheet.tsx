@@ -127,7 +127,9 @@ export function WalletConnectSheet({ isVisible, onClose, onConnect, onCancel }: 
         {/* Main content with wallet list in scrollView */}
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}>
           {wallets.map((wallet, index) => (
             <TouchableOpacity
               key={index}
