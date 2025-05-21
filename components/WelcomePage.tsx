@@ -9,7 +9,7 @@ import { AppInfoSheet, AppDescription } from './AppInfoSheet';
 interface WelcomePageProps {
   favoriteApps: Array<{ id: string; name: string; url: string; category: string; description?: string }>;
   onAppSelect: (appId: string) => void;
-  onClearAppData?: (appId: string) => void;
+  onClearAppData: (appId: string) => void;
 }
 
 export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: WelcomePageProps) {

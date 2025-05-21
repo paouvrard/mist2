@@ -24,7 +24,7 @@ interface Props {
   onClose: () => void;
   categoryTitle: string;
   appDescriptions: AppDescription[];
-  onClearData?: (appId: string) => void;
+  onClearData: (appId: string) => void;
 }
 
 const SPRING_CONFIG = {
@@ -38,8 +38,6 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
   const [isRendered, setIsRendered] = useState(false);
   const insets = useSafeAreaInsets();
   const textColor = useThemeColor({}, 'text');
-  // Add state to track which apps have been cleared
-  const [clearedApps, setClearedApps] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isVisible) {
@@ -53,8 +51,6 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
         }
       });
       translateY.value = withSpring(1000, SPRING_CONFIG);
-      // Reset cleared state when sheet is closed
-      setClearedApps({});
     }
   }, [isVisible]);
 
@@ -66,20 +62,9 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
     transform: [{ translateY: translateY.value }],
   }));
 
-  // Handle clear data with temporary "Cleared!" text
   const handleClearData = (appId: string) => {
-    if (onClearData) {
-      // Update state to show "Cleared!" text
-      setClearedApps(prev => ({ ...prev, [appId]: true }));
-      
-      // Call the original handler
-      onClearData(appId);
-      
-      // Reset text after 1 second
-      setTimeout(() => {
-        setClearedApps(prev => ({ ...prev, [appId]: false }));
-      }, 1000);
-    }
+    // Call the original handler
+    onClearData(appId);
   };
 
   if (!isRendered && !isVisible) {
@@ -123,16 +108,14 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
                 <ThemedText style={styles.appDescription}>
                   {app.description}
                 </ThemedText>
-                {onClearData && (
-                  <TouchableOpacity 
-                    style={styles.clearButton} 
-                    onPress={() => handleClearData(app.id)}
-                  >
-                    <ThemedText style={styles.clearButtonText}>
-                      Clear Data
-                    </ThemedText>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity 
+                  style={styles.clearButton} 
+                  onPress={() => handleClearData(app.id)}
+                >
+                  <ThemedText style={styles.clearButtonText}>
+                    Clear Data
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
             ))
           ) : (
