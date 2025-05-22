@@ -470,11 +470,11 @@ const styles = StyleSheet.create({
     width: 36, // Make it square for better appearance
     justifyContent: 'center', // Center the + text vertically
     alignItems: 'center', // Center the + text horizontally
-    borderRadius: 4,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
+    borderRadius: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
     borderTopColor: '#888888',
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',

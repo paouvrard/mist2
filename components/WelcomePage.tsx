@@ -10,9 +10,19 @@ interface WelcomePageProps {
   favoriteApps: Array<{ id: string; name: string; url: string; category: string; description?: string }>;
   onAppSelect: (appId: string) => void;
   onClearAppData: (appId: string) => void;
+  onAddCustomApp?: () => void; // Add this prop for the add app functionality
+  onDeleteApp?: (appId: string) => void; // Add this prop for the delete app functionality
+  onShowCategoryInfo?: (category: string, descriptions: AppDescription[]) => void; // Add this prop to show category info
 }
 
-export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: WelcomePageProps) {
+export function WelcomePage({ 
+  favoriteApps, 
+  onAppSelect, 
+  onClearAppData, 
+  onAddCustomApp,
+  onDeleteApp,
+  onShowCategoryInfo
+}: WelcomePageProps) {
   const insets = useSafeAreaInsets();
   const windowWidth = Dimensions.get('window').width;
   const cardWidth = (windowWidth - 48) / 2; // Accounting for padding and gap between cards
@@ -34,12 +44,16 @@ export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: Welco
     'social',
     'nft',
     'other',
-    'testnet'
+    'testnet',
+    'my apps' // Add custom apps category
   ];
 
   // Group apps by category
   const appsByCategory = useMemo(() => {
     const groupedApps: { [key: string]: typeof favoriteApps } = {};
+    
+    // Initialize the 'my apps' category with an empty array
+    groupedApps['my apps'] = [];
     
     favoriteApps.forEach(app => {
       const category = app.category || 'other';
@@ -93,13 +107,20 @@ export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: Welco
     const descriptions: AppDescription[] = categoryApps.map(app => ({
       id: app.id,
       name: app.name,
-      description: app.description || `No description available for ${app.name}.`
+      description: app.description || '', // Remove filler text, just use empty string instead
+      url: app.url || '', // Add url to the description
+      category: app.category || '' // Add category to the description
     }));
     
-    // Update state
-    setSelectedCategory(category);
-    setAppDescriptions(descriptions);
-    setIsAppInfoSheetVisible(true);
+    if (onShowCategoryInfo) {
+      // Use the provided handler if available
+      onShowCategoryInfo(category, descriptions);
+    } else {
+      // Update state for internal handling
+      setSelectedCategory(category);
+      setAppDescriptions(descriptions);
+      setIsAppInfoSheetVisible(true);
+    }
   };
 
   // Render a category card
@@ -125,6 +146,17 @@ export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: Welco
             <ThemedText style={styles.appButtonText}>{app.name}</ThemedText>
           </TouchableOpacity>
         ))}
+        
+        {/* Add "+" button for custom apps category, aligned to the left */}
+        {category.toLowerCase() === 'my apps' && onAddCustomApp && (
+          <View style={styles.addButtonContainer}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={onAddCustomApp}>
+              <ThemedText style={styles.addButtonText}>+</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -159,6 +191,7 @@ export function WelcomePage({ favoriteApps, onAppSelect, onClearAppData }: Welco
         categoryTitle={selectedCategory}
         appDescriptions={appDescriptions}
         onClearData={onClearAppData}
+        onDeleteApp={selectedCategory.toLowerCase() === 'my apps' ? onDeleteApp : undefined}
       />
     </ThemedView>
   );
@@ -252,6 +285,33 @@ const styles = StyleSheet.create({
   appButtonText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  addButtonContainer: {
+    width: '100%',
+    alignItems: 'flex-start', // Align to the left
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  addButton: {
+    backgroundColor: '#555555',
+    height: 36, 
+    width: 36, 
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

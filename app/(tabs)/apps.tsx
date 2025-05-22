@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { StyleSheet, TextInput, View, TouchableOpacity, Keyboard, Platform, KeyboardAvoidingView, BackHandler, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,16 +7,18 @@ import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
-import { WelcomePage } from '@/components/WelcomePage';
+import { WelcomePage, AppDescription } from '@/components/WelcomePage';
 import { SignatureRequestSheet } from '@/components/SignatureRequestSheet';
 import { TransactionRequestSheet } from '@/components/TransactionRequestSheet';
-import { AppInfoSheet, AppDescription } from '@/components/AppInfoSheet';
+import { AppInfoSheet } from '@/components/AppInfoSheet';
+import { AddAppSheet } from '@/components/AddAppSheet';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getEthereumProvider } from '@/utils/ethereumProvider';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
 import { Buffer } from 'buffer';
 import { getRpcUrl } from '@/utils/chains';
 import { Wallet } from '@/utils/walletStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define favorite apps with descriptions
 const favoriteApps = [
@@ -92,6 +94,9 @@ const favoriteApps = [
   },
 ];
 
+// Custom apps storage key
+const CUSTOM_APPS_STORAGE_KEY = '@customApps';
+
 // Interface for app connection state tracking
 interface AppConnectionState {
   isConnected: boolean;
@@ -99,6 +104,23 @@ interface AppConnectionState {
   chainId: number;
   url: string;
   isLoaded?: boolean; // Track if WebView has been loaded
+}
+
+// Interface for custom apps
+interface CustomApp {
+  id: string;
+  name: string;
+  url: string;
+  category: string;
+}
+
+// Interface for app descriptions
+export interface AppDescription {
+  id: string;
+  name: string;
+  url: string;
+  category: string;
+  description: string;
 }
 
 // App WebView Component
@@ -217,6 +239,13 @@ export default function AppsScreen() {
   const [transactionDetails, setTransactionDetails] = useState({});
   const [pendingRequestId, setPendingRequestId] = useState<number | null>(null);
   const [pendingAppId, setPendingAppId] = useState<string | null>(null);
+  const [customApps, setCustomApps] = useState<CustomApp[]>([]);
+  const [isAddAppSheetVisible, setIsAddAppSheetVisible] = useState(false);
+
+  // New state variables for AppInfoSheet
+  const [isAppInfoSheetVisible, setIsAppInfoSheetVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [appDescriptions, setAppDescriptions] = useState<AppDescription[]>([]);
   
   // Get references and style values
   const webViewRefs = useRef<{[key: string]: WebView | null}>({});
@@ -231,7 +260,7 @@ export default function AppsScreen() {
   const navBarBackgroundColor = '#333333'; // Dark gray background for navigation bar
   const navBarTextColor = '#CCCCCC'; // Light gray for text and icons
 
-  // Track if this is the first time focusing or if we're returning after going to another tab
+  // Track if this is the first time focusing or if we're returning to the app after going to another tab
   const [isFocused, setIsFocused] = useState(false);
   const wasUnfocused = useRef(false);
 
@@ -327,24 +356,27 @@ export default function AppsScreen() {
 
   // Switch to a specific app - creating it if needed
   const switchToApp = (appId: string) => {
-    // Check if this is a favorite app that hasn't been created yet
+    // First check if this is a favorite app that hasn't been created yet
     const favoriteApp = favoriteApps.find(app => app.id === appId);
+    // Then check if this is a custom app
+    const customApp = customApps.find(app => app.id === appId);
+    const app = favoriteApp || customApp;
     
-    if (favoriteApp && !appInstances[appId]) {
-      // Create the app instance for this favorite app
+    if (app && !appInstances[appId]) {
+      // Create the app instance for this app
       setAppInstances(prev => ({
         ...prev,
         [appId]: {
           isConnected: false,
           wallet: null,
           chainId: 1,
-          url: favoriteApp.url
+          url: app.url
         }
       }));
       
       // Set this as the active app
       setActiveAppId(appId);
-      setCurrentUrl(favoriteApp.url);
+      setCurrentUrl(app.url);
       setShowWelcome(false);
     } else if (appInstances[appId]) {
       // Switch to existing app
@@ -378,8 +410,12 @@ export default function AppsScreen() {
 
   // Handle clearing app data (cache, local storage, cookies, history)
   const handleClearAppData = (appId: string) => {
-    // Find the app in favorites if it doesn't exist in instances yet
+    // First check if the app exists in instances
+    // Then check favorite apps
+    // Then check custom apps
     const favoriteApp = favoriteApps.find(app => app.id === appId);
+    const customApp = customApps.find(app => app.id === appId);
+    
     let appUrl = '';
     let needToCreateInstance = false;
     
@@ -390,9 +426,18 @@ export default function AppsScreen() {
       // App exists in favorites but not as an instance yet
       appUrl = favoriteApp.url;
       needToCreateInstance = true;
+    } else if (customApp) {
+      // App exists in custom apps but not as an instance yet
+      appUrl = customApp.url;
+      needToCreateInstance = true;
     } else {
       console.warn(`Cannot clear data for unknown app ID: ${appId}`);
       return;
+    }
+    
+    // Close the app info sheet if it's visible
+    if (isAppInfoSheetVisible) {
+      setIsAppInfoSheetVisible(false);
     }
     
     // JavaScript to clear all storage types
@@ -1242,7 +1287,7 @@ export default function AppsScreen() {
       }
     }
     
-    // First, check if this matches a favorite app
+    // First, check if this matches any favorite or custom app
     try {
       const inputUrlObj = new URL(processedUrl);
       
@@ -1256,14 +1301,26 @@ export default function AppsScreen() {
         }
       });
       
-      if (matchedFavoriteApp) {
+      // Check if this URL matches any custom app
+      const matchedCustomApp = customApps.find(app => {
+        try {
+          const appUrlObj = new URL(app.url);
+          return inputUrlObj.hostname === appUrlObj.hostname;
+        } catch (e) {
+          return false;
+        }
+      });
+      
+      const matchedApp = matchedFavoriteApp || matchedCustomApp;
+      
+      if (matchedApp) {
         // Use switchToApp which will create the instance if needed
-        switchToApp(matchedFavoriteApp.id);
+        switchToApp(matchedApp.id);
         
         // Force reload with the exact URL if it's different from the app's default
-        if (processedUrl !== matchedFavoriteApp.url) {
+        if (processedUrl !== matchedApp.url) {
           // Small timeout to ensure the app is fully mounted
-          setTimeout(() => reloadWebViewWithUrl(matchedFavoriteApp.id, processedUrl), 50);
+          setTimeout(() => reloadWebViewWithUrl(matchedApp.id, processedUrl), 50);
         }
         return;
       }
@@ -1336,15 +1393,80 @@ export default function AppsScreen() {
     Keyboard.dismiss();
   };
 
+  // Load custom apps from storage
+  useEffect(() => {
+    const loadCustomApps = async () => {
+      try {
+        const storedApps = await AsyncStorage.getItem(CUSTOM_APPS_STORAGE_KEY);
+        if (storedApps) {
+          setCustomApps(JSON.parse(storedApps));
+        }
+      } catch (error) {
+        console.error('Failed to load custom apps:', error);
+      }
+    };
+    
+    loadCustomApps();
+  }, []);
+
+  // Save custom apps to storage
+  const saveCustomApps = async (apps: CustomApp[]) => {
+    try {
+      await AsyncStorage.setItem(CUSTOM_APPS_STORAGE_KEY, JSON.stringify(apps));
+    } catch (error) {
+      console.error('Failed to save custom apps:', error);
+    }
+  };
+  
+  // Add a new custom app
+  const handleAddApp = (name: string, url: string) => {
+    // Create a unique ID by combining name and random number
+    const id = `my_app_${name.replace(/\s+/g, '_').toLowerCase()}_${Math.floor(Math.random() * 10000)}`;
+    
+    const newApp: CustomApp = {
+      id,
+      name,
+      url,
+      category: 'my apps' // Set category to 'my apps'
+    };
+    
+    const updatedApps = [...customApps, newApp];
+    setCustomApps(updatedApps);
+    saveCustomApps(updatedApps);
+    setIsAddAppSheetVisible(false);
+  };
+  
+  // Delete a custom app
+  const handleDeleteApp = (appId: string) => {
+    const updatedApps = customApps.filter(app => app.id !== appId);
+    setCustomApps(updatedApps);
+    saveCustomApps(updatedApps);
+  };
+  
+  // Handler for showing category info
+  const handleShowCategoryInfo = useCallback((category: string, descriptions: AppDescription[]) => {
+    setSelectedCategory(category);
+    setAppDescriptions(descriptions);
+    setIsAppInfoSheetVisible(true);
+  }, []);
+
+  // Combine favorite apps and custom apps for WelcomePage
+  const allApps = useMemo(() => {
+    return [...favoriteApps, ...customApps];
+  }, [favoriteApps, customApps]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       {/* Show welcome screen if needed, but keep WebViews mounted */}
       {showWelcome && (
         <View style={styles.welcomeContainer}>
           <WelcomePage 
-            favoriteApps={favoriteApps} 
+            favoriteApps={allApps} 
             onAppSelect={switchToApp}
             onClearAppData={handleClearAppData}
+            onAddCustomApp={() => setIsAddAppSheetVisible(true)}
+            onDeleteApp={handleDeleteApp}
+            onShowCategoryInfo={handleShowCategoryInfo}
           />
         </View>
       )}
@@ -1406,6 +1528,21 @@ export default function AppsScreen() {
         </KeyboardAvoidingView>
       )}
 
+      <AppInfoSheet
+        isVisible={isAppInfoSheetVisible}
+        onClose={() => setIsAppInfoSheetVisible(false)}
+        categoryTitle={selectedCategory}
+        appDescriptions={appDescriptions}
+        onClearData={handleClearAppData}
+        onDeleteApp={selectedCategory.toLowerCase() === 'my apps' ? handleDeleteApp : undefined}
+      />
+      
+      <AddAppSheet
+        isVisible={isAddAppSheetVisible}
+        onClose={() => setIsAddAppSheetVisible(false)}
+        onAddApp={handleAddApp}
+      />
+      
       <WalletConnectSheet
         isVisible={isWalletSheetVisible}
         onClose={handleConnectCancel}

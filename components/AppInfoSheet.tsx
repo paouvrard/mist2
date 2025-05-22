@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView, View } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, TouchableOpacity, ScrollView, View, Platform, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useTabVisibility } from '@/hooks/useTabVisibility';
 
 export interface AppDescription {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
   categoryTitle: string;
   appDescriptions: AppDescription[];
   onClearData: (appId: string) => void;
+  onDeleteApp?: (appId: string) => void;
 }
 
 const SPRING_CONFIG = {
@@ -32,13 +34,51 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData }: Props) {
+export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData, onDeleteApp }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
+  const [deletingApps, setDeletingApps] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
   const textColor = useThemeColor({}, 'text');
+  const { setHideTabBar } = useTabVisibility();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track if this is the "my apps" category
+  const isCustomAppsCategory = categoryTitle.toLowerCase() === 'my apps';
 
+  // Forcibly keep tab bar hidden with an interval when the sheet is visible
+  // This ensures it stays hidden even if other components try to show it
+  useEffect(() => {
+    if (isVisible) {
+      // Immediately hide the tab bar
+      setHideTabBar(true);
+      
+      // Force tab bar to stay hidden with frequent updates to override parent effects
+      intervalRef.current = setInterval(() => {
+        setHideTabBar(true);
+      }, 100);
+    } else {
+      // Clear the interval when closing
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      // Allow the tab bar to be shown again
+      setHideTabBar(false);
+    }
+    
+    return () => {
+      // Clean up interval on unmount
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setHideTabBar(false);
+    };
+  }, [isVisible, setHideTabBar]);
+
+  // Animation effect for the sheet
   useEffect(() => {
     if (isVisible) {
       setIsRendered(true);
@@ -54,6 +94,30 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
     }
   }, [isVisible]);
 
+  const handleClearData = (appId: string) => {
+    onClearData(appId);
+  };
+  
+  const handleDeleteApp = (appId: string) => {
+    if (onDeleteApp) {
+      // Add this app to the list of currently being deleted
+      setDeletingApps(prev => [...prev, appId]);
+      
+      // Call the delete handler
+      onDeleteApp(appId);
+      
+      // Check if this is the last app in the category
+      const remainingApps = appDescriptions.filter(app => 
+        app.id !== appId && !deletingApps.includes(app.id)
+      );
+      
+      if (remainingApps.length === 0) {
+        // If this was the last app, close the sheet
+        onClose();
+      }
+    }
+  };
+
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
@@ -62,14 +126,23 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
     transform: [{ translateY: translateY.value }],
   }));
 
-  const handleClearData = (appId: string) => {
-    // Call the original handler
-    onClearData(appId);
-  };
+  // Make this sheet fit content properly without excessive space
+  const extraBottomPadding = Platform.OS === 'ios' ? 20 : 10;
+  const bottomInset = insets.bottom + extraBottomPadding;
 
   if (!isRendered && !isVisible) {
     return null;
   }
+
+  // Custom close handler to ensure we clean up properly
+  const handleClose = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setHideTabBar(false);
+    onClose();
+  };
 
   return (
     <>
@@ -78,15 +151,18 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           StyleSheet.absoluteFill,
           { backgroundColor: 'rgba(0,0,0,0.5)' },
           overlayStyle,
+          { zIndex: 10000 }
         ]}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
       <Animated.View
         style={[
           styles.sheet,
           {
             backgroundColor: '#2a2a2a',
-            paddingBottom: insets.bottom + 25,
+            paddingBottom: bottomInset,
+            zIndex: 10001,
+            elevation: 50,
           },
           sheetStyle,
         ]}>
@@ -95,29 +171,53 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           <ThemedText type="title" style={styles.titleText}>
             {categoryTitle} Apps
           </ThemedText>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={16} color={textColor} />
           </TouchableOpacity>
         </View>
         
-        <ScrollView style={styles.content}>
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 0 }}>
           {appDescriptions.length > 0 ? (
-            appDescriptions.map((app) => (
-              <View key={app.id} style={styles.appItem}>
-                <ThemedText style={styles.appName}>{app.name}</ThemedText>
-                <ThemedText style={styles.appDescription}>
-                  {app.description}
-                </ThemedText>
-                <TouchableOpacity 
-                  style={styles.clearButton} 
-                  onPress={() => handleClearData(app.id)}
-                >
-                  <ThemedText style={styles.clearButtonText}>
-                    Clear Data
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            ))
+            appDescriptions.map((app) => {
+              // Skip apps that are being deleted
+              if (deletingApps.includes(app.id)) {
+                return null;
+              }
+              
+              return (
+                <View key={app.id} style={styles.appItem}>
+                  <ThemedText style={styles.appName}>{app.name}</ThemedText>
+                  {app.description ? (
+                    <ThemedText style={styles.appDescription}>
+                      {app.description}
+                    </ThemedText>
+                  ) : null}
+                  <View style={styles.buttonsRow}>
+                    <TouchableOpacity 
+                      style={styles.clearButton} 
+                      onPress={() => handleClearData(app.id)}
+                    >
+                      <ThemedText style={styles.clearButtonText}>
+                        Clear Data
+                      </ThemedText>
+                    </TouchableOpacity>
+                    
+                    {isCustomAppsCategory && onDeleteApp && (
+                      <TouchableOpacity 
+                        style={styles.deleteButton} 
+                        onPress={() => handleDeleteApp(app.id)}
+                      >
+                        <ThemedText style={styles.deleteButtonText}>
+                          Delete App
+                        </ThemedText>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              );
+            })
           ) : (
             <View style={styles.noAppsContainer}>
               <ThemedText style={styles.noAppsText}>
@@ -151,7 +251,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    maxHeight: '80%',
   },
   titleBar: {
     flexDirection: 'row',
@@ -214,6 +313,11 @@ const styles = StyleSheet.create({
     color: '#b8b8b8',
     marginBottom: 12,
   },
+  buttonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   clearButton: {
     backgroundColor: '#555555',
     paddingVertical: 8,
@@ -230,6 +334,26 @@ const styles = StyleSheet.create({
     borderRightColor: '#444444',
   },
   clearButtonText: {
+    color: '#FF9999',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#555555',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  deleteButtonText: {
     color: '#FF9999',
     fontSize: 14,
     fontWeight: '500',
