@@ -177,6 +177,12 @@ export function AddAppSheet({ isVisible, onClose, onAddApp }: Props) {
           {/* Content area */}
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={styles.content}>
+              <View style={styles.descriptionContainer}>
+                <ThemedText style={styles.descriptionText}>
+                  Add your favorite applications like direct links to Safe Apps and other website urls.
+                </ThemedText>
+              </View>
+              
               <TextInput
                 style={styles.input}
                 value={appName}
@@ -282,6 +288,24 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
+  },
+  descriptionContainer: {
+    backgroundColor: '#3a3a3a',
+    padding: 12,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
+    borderTopColor: '#333333',
+    borderLeftColor: '#333333',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  descriptionText: {
+    color: '#b8b8b8',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: '#444444',

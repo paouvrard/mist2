@@ -221,7 +221,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           ) : (
             <View style={styles.noAppsContainer}>
               <ThemedText style={styles.noAppsText}>
-                No app descriptions available for this category.
+                Your apps will appear here. Use MY APPS to create custom links to Safe Apps and your other favorite applications.
               </ThemedText>
             </View>
           )}
