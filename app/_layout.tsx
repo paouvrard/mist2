@@ -2,15 +2,16 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import '@walletconnect/react-native-compat';
 import { WagmiProvider } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit, defaultWagmiConfig, AppKit } from "@reown/appkit-wagmi-react-native";
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -58,6 +59,12 @@ export default function RootLayout() {
     if (loaded) {
       SplashScreen.hideAsync();
     }
+
+    // Set Android status bar color to match the app's navigation bar grey color
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor('#2a2a2a');
+      StatusBar.setTranslucent(false);
+    }
   }, [loaded]);
 
   if (!loaded) {
@@ -68,21 +75,28 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <View style={[styles.container, { backgroundColor }]}>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <View style={styles.navigationContainer}>
-                <Stack>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-                <StatusBar style="auto" />
+          <SafeAreaProvider>
+            <View style={[styles.container, { backgroundColor }]}>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                {/* Use StatusBar with proper configuration */}
+                <ExpoStatusBar 
+                  style={colorScheme === 'dark' ? 'light' : 'dark'} 
+                  translucent={false} 
+                />
+                
+                <View style={styles.navigationContainer}>
+                  <Stack>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                </View>
+              </ThemeProvider>
+              {/* AppKit with higher z-index */}
+              <View style={styles.appKitContainer}>
+                <AppKit />
               </View>
-            </ThemeProvider>
-            {/* AppKit with higher z-index */}
-            <View style={styles.appKitContainer}>
-              <AppKit />
             </View>
-          </View>
+          </SafeAreaProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </GestureHandlerRootView>

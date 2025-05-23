@@ -18,6 +18,8 @@ export interface AppDescription {
   id: string;
   name: string;
   description: string;
+  url: string;
+  category: string;
 }
 
 interface Props {
@@ -44,8 +46,8 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
   const { setHideTabBar } = useTabVisibility();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Track if this is the "my apps" category
-  const isCustomAppsCategory = categoryTitle.toLowerCase() === 'my apps';
+  // Track if this is the "my" category
+  const isCustomAppsCategory = categoryTitle.toLowerCase() === 'my';
 
   // Forcibly keep tab bar hidden with an interval when the sheet is visible
   // This ensures it stays hidden even if other components try to show it
@@ -221,7 +223,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           ) : (
             <View style={styles.noAppsContainer}>
               <ThemedText style={styles.noAppsText}>
-                Your apps will appear here. Use MY APPS to create custom links to Safe Apps and your other favorite applications.
+                Your apps will appear here. Use MY to create custom links to Safe Apps and your other favorite applications.
               </ThemedText>
             </View>
           )}

@@ -32,8 +32,10 @@ export function WelcomePage({
   const [selectedCategory, setSelectedCategory] = useState('');
   const [appDescriptions, setAppDescriptions] = useState<AppDescription[]>([]);
   
-  // Calculate proper top padding based on platform, matching index page
-  const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
+  // Calculate proper top padding based on platform, matching index page calculation exactly
+  const titleTopPadding = Platform.OS === 'ios' 
+    ? Math.max(insets.top, 10) // Use insets but ensure minimum of 10px on iOS
+    : 16; // Reduced padding on Android to remove empty space
 
   // Define category order (priority list)
   const categoryOrder = [
@@ -45,15 +47,15 @@ export function WelcomePage({
     'nft',
     'other',
     'testnet',
-    'my apps' // Add custom apps category
+    'my' // Add custom apps category
   ];
 
   // Group apps by category
   const appsByCategory = useMemo(() => {
     const groupedApps: { [key: string]: typeof favoriteApps } = {};
     
-    // Initialize the 'my apps' category with an empty array
-    groupedApps['my apps'] = [];
+    // Initialize the 'my' category with an empty array
+    groupedApps['my'] = [];
     
     favoriteApps.forEach(app => {
       const category = app.category || 'other';
@@ -128,7 +130,7 @@ export function WelcomePage({
     <View key={category} style={[styles.categoryCard, { width: cardWidth }]}>
       <View style={styles.categoryTitleContainer}>
         <ThemedText style={styles.categoryTitle}>
-          {category.charAt(0).toUpperCase() + category.slice(1)}
+          {category.toLowerCase() === 'my' ? 'MY APPS' : category.charAt(0).toUpperCase() + category.slice(1)}
         </ThemedText>
         <TouchableOpacity 
           style={styles.infoButton}
@@ -148,7 +150,7 @@ export function WelcomePage({
         ))}
         
         {/* Add "+" button for custom apps category, aligned to the left */}
-        {category.toLowerCase() === 'my apps' && onAddCustomApp && (
+        {category.toLowerCase() === 'my' && onAddCustomApp && (
           <View style={styles.addButtonContainer}>
             <TouchableOpacity
               style={styles.addButton}
@@ -191,7 +193,7 @@ export function WelcomePage({
         categoryTitle={selectedCategory}
         appDescriptions={appDescriptions}
         onClearData={onClearAppData}
-        onDeleteApp={selectedCategory.toLowerCase() === 'my apps' ? onDeleteApp : undefined}
+        onDeleteApp={selectedCategory.toLowerCase() === 'my' ? onDeleteApp : undefined}
       />
     </ThemedView>
   );
@@ -205,7 +207,8 @@ const styles = StyleSheet.create({
     marginBottom: 45,
   },
   titleContainer: {
-    paddingHorizontal: 32,
+    paddingLeft: 0,
+    paddingRight: 32,
     paddingBottom: 16,
   },
   titleText: {

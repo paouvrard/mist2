@@ -92,6 +92,12 @@ const styles = StyleSheet.create({
     height: 50, // Reduced height for Android
     paddingBottom: 0,
     paddingTop: 0,
+    // Fix for Android system navigation bar overlap
+    marginBottom: Platform.OS === 'android' ? 0 : 0,
+    paddingVertical: 0,
+    // Add these properties to ensure the tab bar displays above the system navigation
+    elevation: 8, // Higher elevation to ensure it appears above system UI
+    zIndex: 8, // Higher zIndex for proper layering
   },
   hidden: {
     display: 'none',

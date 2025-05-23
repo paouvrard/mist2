@@ -7,7 +7,7 @@ import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WalletConnectSheet } from '@/components/WalletConnectSheet';
 import { WalletInfoSheet } from '@/components/WalletInfoSheet';
-import { WelcomePage, AppDescription } from '@/components/WelcomePage';
+import { WelcomePage } from '@/components/WelcomePage';
 import { SignatureRequestSheet } from '@/components/SignatureRequestSheet';
 import { TransactionRequestSheet } from '@/components/TransactionRequestSheet';
 import { AppInfoSheet } from '@/components/AppInfoSheet';
@@ -144,9 +144,6 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
   const INJECT_PROVIDER_JS = getEthereumProvider(instanceId);
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background'); // Get the theme background color
-  
-  // Calculate status bar height to ensure content is below status bar/camera
-  const statusBarHeight = Platform.OS === 'android' ? Math.max(insets.top, 24) : insets.top;
 
   // Use React.useImperativeHandle to forward the WebView ref with our custom methods
   React.useImperativeHandle(ref, () => ({
@@ -177,6 +174,9 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
     return null;
   }
 
+  // Create appropriate status bar spacing only for iOS
+  const statusBarHeight = Platform.OS === 'ios' ? insets.top : 0;
+
   return (
     <View 
       style={[
@@ -186,8 +186,10 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
       collapsable={false}
       renderToHardwareTextureAndroid={true}>
       
-      {/* Status bar placeholder to push content down - use the app's dark background color */}
-      <View style={{ height: statusBarHeight, backgroundColor: backgroundColor }} />
+      {/* Status bar spacer - only visible on iOS */}
+      {Platform.OS === 'ios' && (
+        <View style={{ height: statusBarHeight, backgroundColor }} />
+      )}
       
       <WebView
         ref={webViewRef}
@@ -201,15 +203,11 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
         cacheEnabled={true}
         cacheMode="LOAD_CACHE_ELSE_NETWORK"
         keyboardDisplayRequiresUserAction={false}
-        // Use different inset behavior per platform
-        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         androidLayerType="hardware"
-        // Add content inset to account for navigation bar
         contentInset={{ top: 0, left: 0, right: 0, bottom: 40 }}
-        // Add containerStyle to ensure proper padding on Android
         containerStyle={{ paddingBottom: 40 }}
-        // Explicitly override any default styling from the webview
         originWhitelist={['*']}
         incognito={false}
         key={instanceId}
@@ -1427,7 +1425,7 @@ export default function AppsScreen() {
       id,
       name,
       url,
-      category: 'my apps' // Set category to 'my apps'
+      category: 'my' // Set category to 'my'
     };
     
     const updatedApps = [...customApps, newApp];
@@ -1474,8 +1472,7 @@ export default function AppsScreen() {
       {/* Keep WebViews mounted but hide them when showing welcome */}
       <View style={[
         styles.webviewContainer, 
-        // Apply platform-specific padding - use insets.top for both platforms to ensure content starts below the status bar
-        { paddingTop: insets.top },
+        // Remove paddingTop to eliminate the space between the status bar and content
         showWelcome && styles.offscreenView // Use position-based hiding instead of display: none
       ]}>
         {/* Render all app instances */}
@@ -1534,7 +1531,7 @@ export default function AppsScreen() {
         categoryTitle={selectedCategory}
         appDescriptions={appDescriptions}
         onClearData={handleClearAppData}
-        onDeleteApp={selectedCategory.toLowerCase() === 'my apps' ? handleDeleteApp : undefined}
+        onDeleteApp={selectedCategory.toLowerCase() === 'my' ? handleDeleteApp : undefined}
       />
       
       <AddAppSheet
@@ -1583,7 +1580,7 @@ const styles = StyleSheet.create({
   webviewContainer: {
     flex: 1,
     paddingBottom: 50, // Fixed padding for the navigation bar height
-    // Ensure there are no invisble overlays blocking touch events
+    // Ensure there are no invisible overlays blocking touch events
     overflow: 'hidden',
   },
   navigationBarContainer: {

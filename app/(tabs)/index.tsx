@@ -203,9 +203,11 @@ function Wallets() {
     setWallets(updatedWallets);
   }, []);
 
-  // Calculate proper top padding based on platform
-  const titleTopPadding = Platform.OS === 'ios' ? insets.top + 20 : 40;
-
+  // Calculate proper top padding based on platform - adjust to eliminate empty space
+  const titleTopPadding = Platform.OS === 'ios' 
+    ? Math.max(insets.top, 10) // Use insets but ensure minimum of 10px on iOS
+    : 16; // Reduced from 40 to 16 on Android to remove empty space
+    
   const renderWalletItem = useCallback(({ item, drag, isActive }: RenderItemParams<Wallet>) => {
     const isWallConn = isWalletConnected(item);
     

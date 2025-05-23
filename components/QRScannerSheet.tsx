@@ -6,6 +6,7 @@ import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
+import { StatusBar } from 'expo-status-bar';
 
 type ScanPurpose = 'address' | 'signature';
 
@@ -158,95 +159,137 @@ export function QRScannerSheet({ isVisible, onClose, purpose, onScanComplete, ke
     );
   }
   
+  // Get screen dimensions for precise sizing
+  const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
+  // Add extra padding for both platforms, but more for Android
+  const extraHeight = Platform.OS === 'android' ? 200 : 50; 
+  
   return (
-    <View style={styles.fullScreenContainer}>
-      {permission.granted ? (
-        <>
-          <CameraView
-            style={StyleSheet.absoluteFillObject}
-            facing="back"
-            barcodeScannerSettings={{
-              barcodeTypes: ["qr"]
-            }}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          />
-          
-          <View style={styles.overlay}>
-            <View style={styles.header}>
-              <ThemedText style={styles.headerText}>
-                {purpose === 'address' ? 'Scan Hito Address' : 'Scan Hito Signature'}
+    <View style={[
+      styles.container,
+      // Add platform-specific styles to eliminate the thin bar
+      Platform.OS === 'ios' ? styles.iosContainer : {}
+    ]}>
+      {/* Use declarative StatusBar component with appropriate settings */}
+      <StatusBar style="light" hidden={true} />
+      
+      <View style={[
+        styles.fullScreenContainer,
+        // Apply platform-specific styling for the container
+        Platform.OS === 'ios' ? styles.iosFullScreenContainer : {}
+      ]}>
+        {permission.granted ? (
+          <>
+            {/* Camera component using absolute positioning for fullscreen */}
+            <CameraView
+              style={{
+                position: 'absolute',
+                width: windowWidth,
+                height: windowHeight + extraHeight,
+                top: 0,
+                left: 0,
+                // Add bottom padding to ensure full coverage on iOS
+                bottom: Platform.OS === 'ios' ? -50 : undefined
+              }}
+              facing="back"
+              barcodeScannerSettings={{
+                barcodeTypes: ["qr"]
+              }}
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            />
+            
+            {/* Overlay UI for scanner that floats above the camera */}
+            <View style={styles.overlay}>
+              <View style={styles.header}>
+                <ThemedText style={styles.headerText}>
+                  {purpose === 'address' ? 'Scan Hito Address' : 'Scan Hito Signature'}
+                </ThemedText>
+                <TouchableOpacity 
+                  onPress={handleClose} 
+                  style={styles.closeButton}
+                  hitSlop={{ top: 25, right: 25, bottom: 25, left: 25 }}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="close" size={28} color="white" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.scanFrame} />
+              
+              <ThemedText style={styles.instructions}>
+                {purpose === 'address' 
+                  ? 'Please scan the QR code showing the wallet address on your Hito device'
+                  : 'After signing on your Hito device, scan the QR code with the signature'}
               </ThemedText>
-              <TouchableOpacity 
-                onPress={handleClose} 
-                style={styles.closeButton}
-                hitSlop={{ top: 25, right: 25, bottom: 25, left: 25 }} // Increase touch area
-                activeOpacity={0.6} // Make it more responsive
-              >
-                <Ionicons name="close" size={28} color="white" />
-              </TouchableOpacity>
+              
+              {scanned && (
+                <TouchableOpacity
+                  style={styles.rescanButton}
+                  onPress={() => setScanned(false)}>
+                  <ThemedText style={styles.rescanText}>Scan Again</ThemedText>
+                </TouchableOpacity>
+              )}
             </View>
-            
-            <View style={styles.scanFrame} />
-            
-            <ThemedText style={styles.instructions}>
-              {purpose === 'address' 
-                ? 'Please scan the QR code showing the wallet address on your Hito device'
-                : 'After signing on your Hito device, scan the QR code with the signature'}
-            </ThemedText>
-            
-            {scanned && (
-              <TouchableOpacity
-                style={styles.rescanButton}
-                onPress={() => setScanned(false)}>
-                <ThemedText style={styles.rescanText}>Scan Again</ThemedText>
-              </TouchableOpacity>
-            )}
-          </View>
-        </>
-      ) : (
-        // Simple loading view while waiting for permission
-        <ThemedView style={styles.loadingContainer}>
-          <TouchableOpacity 
-            onPress={handleClose} 
-            style={styles.closeButton}
-            hitSlop={{ top: 25, right: 25, bottom: 25, left: 25 }} // Increase touch area
-            activeOpacity={0.6} // Make it more responsive
-          >
-            <Ionicons name="close" size={28} color="white" />
-          </TouchableOpacity>
-          <ThemedText style={styles.loadingText}>Accessing camera...</ThemedText>
-        </ThemedView>
-      )}
+          </>
+        ) : (
+          // Simple loading view while waiting for permission
+          <ThemedView style={styles.loadingContainer}>
+            <TouchableOpacity 
+              onPress={handleClose} 
+              style={styles.closeButton}
+              hitSlop={{ top: 25, right: 25, bottom: 25, left: 25 }}
+              activeOpacity={0.6}
+            >
+              <Ionicons name="close" size={28} color="white" />
+            </TouchableOpacity>
+            <ThemedText style={styles.loadingText}>Accessing camera...</ThemedText>
+          </ThemedView>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  fullScreenContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+  },
+  // iOS-specific container adjustments
+  iosContainer: {
+    bottom: -10, // Extend slightly beyond screen bottom
+  },
+  fullScreenContainer: {
+    flex: 1,
     backgroundColor: 'black',
-    zIndex: 100000,
+    overflow: 'hidden',
+  },
+  // iOS-specific fullscreen container adjustments
+  iosFullScreenContainer: {
+    marginBottom: -20, // Negative margin to push content down
+    paddingBottom: 10, // Extra padding to cover any gap
+  },
+  cameraView: {
+    width: '100%',
+    height: '100%',
   },
   overlay: {
     flex: 1,
     justifyContent: 'space-between',
     padding: 20,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: Platform.OS === 'ios' ? 40 : 10,
   },
   headerText: {
     fontSize: 18,
@@ -275,7 +318,7 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontSize: 16,
-    marginBottom: 20,
+    marginBottom: 50,
   },
   rescanButton: {
     backgroundColor: '#2089dc',
