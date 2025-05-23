@@ -97,7 +97,7 @@ export class HitoManager {
       console.log('Initializing NFC for message signing');
       
       await NfcManager.requestTechnology(NfcTech.Ndef);
-      
+
       // Format message data for Hito according to the expected format: evm.msg:{walletAddress}:{msgHex}
       // Convert message to hex if it's not already
       let msgHex = message;

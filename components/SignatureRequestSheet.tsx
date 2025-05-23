@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -8,7 +8,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { switchChain, signMessage } from '@wagmi/core';
+import { switchChain, signMessage, signTypedData } from '@wagmi/core';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +48,7 @@ export function SignatureRequestSheet({
   const [isRendered, setIsRendered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTypedData, setIsTypedData] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [hitoMessageSent, setHitoMessageSent] = useState(false);
   const [walletConnectSending, setWalletConnectSending] = useState(false);
@@ -57,7 +58,20 @@ export function SignatureRequestSheet({
   const { open } = useAppKit();
   const { address } = useAccount();
   const hitoManager = new HitoManager();
-  
+
+  const parsedMessageDisplay = useMemo(() => {
+    try {
+      // eth_signTypedData
+      const parsedMessage = JSON.parse(message);
+      setIsTypedData(true);
+      return JSON.stringify(parsedMessage, null, 2);
+    } catch (e) {
+      // eth_sign
+      setIsTypedData(false);
+      return message;
+    }
+  }, [message]);
+
   // Get screen dimensions for max height calculation
   const windowHeight = Dimensions.get('window').height;
   const maxSheetHeight = windowHeight * 0.8;
@@ -96,14 +110,19 @@ export function SignatureRequestSheet({
         if (!nfcStatus.isSupported) {
           throw new Error(nfcStatus.message || 'NFC is required and not available');
         }
-        
+        // TODO check isTypedData
         await hitoManager.writeMessageToNFC(message, currentWallet.address);
         setHitoMessageSent(true);
         setIsLoading(false);
       } else if (currentWallet.type === 'wallet-connect') {
         setWalletConnectSending(true);
         await switchChain(wagmiConfig, { chainId: currentChainId });
-        const signature = await signMessage(wagmiConfig, { message });
+        let signature;
+        if (isTypedData) {
+          signature = await signTypedData(wagmiConfig, JSON.parse(message))
+        } else {
+          signature = await signMessage(wagmiConfig, { message });
+        }
         
         if (onSuccess) {
           onSuccess(signature);
@@ -204,7 +223,9 @@ export function SignatureRequestSheet({
           showsHorizontalScrollIndicator={false}>
           <View style={styles.messageContainer}>
             <ThemedText style={styles.messageLabel}>Message:</ThemedText>
-            <ThemedText style={styles.message}>{message}</ThemedText>
+            <ThemedText style={[styles.message]}>
+              {parsedMessageDisplay}
+            </ThemedText>
           </View>
 
           {error && (
@@ -484,6 +505,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3a3a3a',
     padding: 16,
     marginBottom: 0,
+    marginTop: 16,
     borderRadius: 0,
   },
   instructions: {

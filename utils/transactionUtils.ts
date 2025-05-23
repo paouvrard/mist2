@@ -64,7 +64,7 @@ export async function populateTransactionFields(
       blockTag: 'pending'
     });
   } else {
-    populatedTx.nonce = tx.nonce;
+    populatedTx.nonce = Number(tx.nonce);
   }
   
   // Handle fee data based on EIP-1559 support

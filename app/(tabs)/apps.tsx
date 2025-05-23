@@ -1116,6 +1116,128 @@ export default function AppsScreen() {
             }
             break;
             
+          case 'eth_call':
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              if (appWebViewRef) {
+                appWebViewRef.injectJavaScript(`
+                  window.ethereum._resolveRequest({
+                    id: ${data.id},
+                    error: { code: 4200, message: 'eth_call requires transaction parameters' }
+                  });
+                `);
+              }
+              break;
+            }
+            
+            // Use direct RPC call
+            if (appWebViewRef) {
+              fetch(getRpcUrl(appState.chainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_call',
+                  params: data.payload.params
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (appWebViewRef) {
+                  if (responseJson.error) {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (appWebViewRef) {
+                  appWebViewRef.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+            
+          case 'eth_getBalance':
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              if (appWebViewRef) {
+                appWebViewRef.injectJavaScript(`
+                  window.ethereum._resolveRequest({
+                    id: ${data.id},
+                    error: { code: 4200, message: 'eth_getBalance requires address parameter' }
+                  });
+                `);
+              }
+              break;
+            }
+            
+            // Use direct RPC call
+            if (appWebViewRef) {
+              fetch(getRpcUrl(appState.chainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_getBalance',
+                  params: data.payload.params
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (appWebViewRef) {
+                  if (responseJson.error) {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (appWebViewRef) {
+                  appWebViewRef.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+            
           case 'eth_gasPrice':
             // Use direct RPC call from React Native side
             if (appWebViewRef) {
@@ -1130,6 +1252,67 @@ export default function AppsScreen() {
                   jsonrpc: '2.0',
                   method: 'eth_gasPrice',
                   params: []
+                })
+              })
+              .then(response => response.json())
+              .then(responseJson => {
+                if (appWebViewRef) {
+                  if (responseJson.error) {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        error: { code: 4200, message: "${responseJson.error.message || 'RPC error'}" }
+                      });
+                    `);
+                  } else {
+                    appWebViewRef.injectJavaScript(`
+                      window.ethereum._resolveRequest({
+                        id: ${data.id},
+                        result: ${JSON.stringify(responseJson.result)}
+                      });
+                    `);
+                  }
+                }
+              })
+              .catch(error => {
+                if (appWebViewRef) {
+                  appWebViewRef.injectJavaScript(`
+                    window.ethereum._resolveRequest({
+                      id: ${data.id},
+                      error: { code: 4200, message: "${error.message || 'RPC error'}" }
+                    });
+                  `);
+                }
+              });
+            }
+            break;
+            
+          case 'eth_getCode':
+            // Validate parameters
+            if (!data.payload.params || data.payload.params.length < 1) {
+              if (appWebViewRef) {
+                appWebViewRef.injectJavaScript(`
+                  window.ethereum._resolveRequest({
+                    id: ${data.id},
+                    error: { code: 4200, message: 'eth_getCode requires address parameter' }
+                  });
+                `);
+              }
+              break;
+            }
+            
+            // Use direct RPC call
+            if (appWebViewRef) {
+              fetch(getRpcUrl(appState.chainId), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id: 1,
+                  jsonrpc: '2.0',
+                  method: 'eth_getCode',
+                  params: data.payload.params
                 })
               })
               .then(response => response.json())
@@ -1183,18 +1366,9 @@ export default function AppsScreen() {
             try {
               // Extract typed data for display - this would need more processing for proper display
               const typedData = data.payload.params[1]; // Typed data is the second param
-              let message;
-              
-              try {
-                // Try to parse the typed data if it's a string
-                const parsedData = typeof typedData === 'string' ? JSON.parse(typedData) : typedData;
-                message = JSON.stringify(parsedData, null, 2);
-              } catch (e) {
-                message = typedData;
-              }
               
               // Set the message for display
-              setSignatureMessage(`[Typed Data Signature Request]\n${message}`);
+              setSignatureMessage(typedData);
               
               // Set the pending request data
               setPendingRequestId(data.id);
