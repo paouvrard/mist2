@@ -37,17 +37,20 @@ export function WelcomePage({
     ? Math.max(insets.top, 10) // Use insets but ensure minimum of 10px on iOS
     : 16; // Reduced padding on Android to remove empty space
 
+  // Get window dimensions for layout constraints
+  const windowHeight = Dimensions.get('window').height;
+  const maxMyAppsHeight = windowHeight * 0.25; // 25% of screen height maximum
+
   // Define category order (priority list)
   const categoryOrder = [
-    'portfolio',
+    'nft / social',
+    'portfolio / send',
+    'stake',
     'swap',
-    'earn', 
     'bridge',
-    'social',
-    'nft',
-    'other',
+    'earn / borrow', 
     'testnet',
-    'my' // Add custom apps category
+    'smart wallet',
   ];
 
   // Group apps by category
@@ -71,7 +74,8 @@ export function WelcomePage({
   // Get sorted categories based on the predefined order
   const sortedCategories = useMemo(() => {
     // Get all unique categories from the apps
-    const availableCategories = Object.keys(appsByCategory);
+    const availableCategories = Object.keys(appsByCategory)
+      .filter(category => category.toLowerCase() !== 'my'); // Exclude the "my" category
     
     // First, add categories in the predefined order (if they exist in the apps)
     const orderedCategories = categoryOrder.filter(cat => availableCategories.includes(cat));
@@ -125,12 +129,12 @@ export function WelcomePage({
     }
   };
 
-  // Render a category card
+  // Render a category card for regular categories
   const renderCategoryCard = (category: string) => (
     <View key={category} style={[styles.categoryCard, { width: cardWidth }]}>
       <View style={styles.categoryTitleContainer}>
         <ThemedText style={styles.categoryTitle}>
-          {category.toLowerCase() === 'my' ? 'MY APPS' : category.charAt(0).toUpperCase() + category.slice(1)}
+          {category.charAt(0).toUpperCase() + category.slice(1)}
         </ThemedText>
         <TouchableOpacity 
           style={styles.infoButton}
@@ -148,20 +152,71 @@ export function WelcomePage({
             <ThemedText style={styles.appButtonText}>{app.name}</ThemedText>
           </TouchableOpacity>
         ))}
-        
-        {/* Add "+" button for custom apps category, aligned to the left */}
-        {category.toLowerCase() === 'my' && onAddCustomApp && (
-          <View style={styles.addButtonContainer}>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={onAddCustomApp}>
-              <ThemedText style={styles.addButtonText}>+</ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
     </View>
   );
+  
+  // Render the My Apps section
+  const renderMyAppsSection = () => {
+    const myApps = appsByCategory['my'];
+    const isEmpty = myApps.length === 0;
+    
+    return (
+      <View style={styles.myAppsContainer}>
+        <View style={[
+          styles.myAppsTitleContainer,
+          isEmpty && styles.centeredTitleContainer
+        ]}>
+          <View style={styles.titleAndButtonContainer}>
+            <ThemedText style={styles.myAppsTitle}>MY APPS</ThemedText>
+            
+            {/* Add "+" button right next to the title */}
+            {onAddCustomApp && (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={onAddCustomApp}>
+                <ThemedText style={styles.addButtonText}>+</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Info button stays on the right side */}
+          <TouchableOpacity 
+            style={styles.infoButton}
+            onPress={() => handleCategoryInfo('my')}>
+            <Ionicons name="information-circle" size={20} color="#b8b8b8" />
+          </TouchableOpacity>
+        </View>
+        
+        {!isEmpty ? (
+          <ScrollView 
+            style={[styles.myAppsScrollView, { maxHeight: maxMyAppsHeight }]}
+            contentContainerStyle={styles.myAppsScrollContent}
+            showsVerticalScrollIndicator={true}
+            showsHorizontalScrollIndicator={false}>
+            
+            <View style={styles.myAppsRowContainer}>
+              {myApps.map((app) => (
+                <TouchableOpacity
+                  key={app.id}
+                  style={styles.myAppButton}
+                  onPress={() => onAppSelect(app.id)}>
+                  <ThemedText style={styles.appButtonText}>{app.name}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyMyAppsContainer}>
+            <ThemedText style={styles.noMyAppsText}>
+              No apps added yet
+            </ThemedText>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -169,22 +224,30 @@ export function WelcomePage({
         <ThemedText style={styles.titleText}>APPS</ThemedText>
       </View>
       
-      <ScrollView 
-        style={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}>
-        <View style={styles.columnsContainer}>
-          {/* Left Column */}
-          <View style={styles.column}>
-            {leftColumn.map(renderCategoryCard)}
+      <View style={styles.mainContainer}>
+        {/* Two column scrollable area for regular categories */}
+        <ScrollView 
+          style={styles.columnsScrollContainer}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}>
+          <View style={styles.columnsContainer}>
+            {/* Left Column */}
+            <View style={styles.column}>
+              {leftColumn.map(renderCategoryCard)}
+            </View>
+            
+            {/* Right Column */}
+            <View style={styles.column}>
+              {rightColumn.map(renderCategoryCard)}
+            </View>
           </View>
-          
-          {/* Right Column */}
-          <View style={styles.column}>
-            {rightColumn.map(renderCategoryCard)}
-          </View>
+        </ScrollView>
+
+        {/* MY APPS Section - Fixed below columns, not inside the ScrollView */}
+        <View style={styles.myAppsSection}>
+          {renderMyAppsSection()}
         </View>
-      </ScrollView>
+      </View>
 
       {/* App Info Sheet */}
       <AppInfoSheet
@@ -223,6 +286,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   contentContainer: {
+    flex: 1,
+  },
+  mainContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  columnsScrollContainer: {
     flex: 1,
   },
   columnsContainer: {
@@ -269,13 +340,17 @@ const styles = StyleSheet.create({
   },
   appList: {
     width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
   },
   appButton: {
     backgroundColor: '#555555',
-    padding: 12,
+    padding: 6,
+    paddingHorizontal: 12,
     alignItems: 'center',
     marginBottom: 8,
-    width: '100%',
+    width: '100%', // Fill width of parent
     borderTopWidth: 2,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
@@ -298,23 +373,109 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#555555',
-    height: 36, 
-    width: 36, 
+    height: 32, 
+    width: 32, 
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
+    marginLeft: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
     borderTopColor: '#888888',
     borderLeftColor: '#888888',
     borderBottomColor: '#444444',
     borderRightColor: '#444444',
   },
   addButtonText: {
-    color: '#fff',
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  myAppsSection: {
+    width: '100%',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  myAppsContainer: {
+    backgroundColor: '#3a3a3a',
+    borderRadius: 0,
+    padding: 12,
+    paddingBottom: 0,
+    marginBottom: 6,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  myAppsTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  myAppsTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    color: '#e8e8e8',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flexShrink: 1,
+  },
+  centeredTitleContainer: {
+    marginBottom: 0, // Remove bottom margin when empty
+  },
+  titleAndButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  myAppsScrollView: {
+    width: '100%',
+  },
+  myAppsScrollContent: {
+    width: '100%',
+  },
+  myAppsRowContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+  myAppButton: {
+    backgroundColor: '#555555',
+    padding: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    marginBottom: 8,
+    marginRight: 8,
+    alignSelf: 'flex-start',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  emptyMyAppsContainer: {
+    paddingVertical: 0, // Remove vertical padding to minimize container height
+    height: 0, // Set height to 0 to minimize vertical space
+    overflow: 'hidden', // Hide any overflow content
+  },
+  noMyAppsText: {
+    color: '#b8b8b8',
+    fontSize: 14,
+    fontWeight: '400',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

@@ -26,71 +26,134 @@ const favoriteApps = [
     id: 'zerion', 
     name: 'Zerion', 
     url: 'https://app.zerion.io', 
-    category: 'portfolio',
-    description: 'A simple interface to track and manage your entire DeFi portfolio from one place. Monitor your assets across multiple wallets and networks.'
+    category: 'portfolio / send',
+    description: 'All your tokens, DeFi positions, NFT collections, and transaction history across all major networks.'
   },
   { 
     id: 'uniswap', 
     name: 'Uniswap', 
     url: 'https://app.uniswap.org', 
     category: 'swap',
-    description: 'A decentralized trading protocol, known for its role in facilitating automated trading of decentralized finance (DeFi) tokens.'
+    description: 'The most widely used decentralized exchange (DEX) for swapping Ethereum tokens without intermediaries.'
   },
   { 
     id: 'aave', 
     name: 'Aave', 
     url: 'https://app.aave.com', 
-    category: 'earn',
-    description: 'An open source DeFi protocol that allows users to lend and borrow crypto assets without going through a centralized intermediary.'
+    category: 'earn / borrow',
+    description: 'The leading open source lending protocol where users can borrow or earn interest on crypto assets. Trusted by DeFi users for its security, transparency, and innovation'
+  },
+  { 
+    id: 'bungee', 
+    name: 'Bungee', 
+    url: 'https://www.bungee.exchange', 
+    category: 'bridge',
+    description: 'Bounce between assets spread across any network efficiently using the open liquidity marketplace.'
+  },
+  { 
+    id: 'jumper', 
+    name: 'Jumper', 
+    url: 'https://jumper.exchange', 
+    category: 'bridge',
+    description: 'Enabling seamless swap and bridge transactions across 25 blockchains.'
   },
   { 
     id: 'rainbow-bridge', 
     name: 'Rainbow Bridge', 
     url: 'https://rainbowbridge.app', 
     category: 'bridge',
-    description: 'Transfer tokens between Ethereum and NEAR Protocol. Rainbow Bridge allows tokens to move seamlessly between blockchains.'
-  },
-  { 
-    id: 'rainbow-bridge-testnet', 
-    name: 'Rainbow Bridge Testnet', 
-    url: 'https://testnet.rainbowbridge.app', 
-    category: 'testnet',
-    description: 'Test version of Rainbow Bridge for transferring tokens between Ethereum and NEAR Protocol test networks.'
+    description: 'Transfer tokens between Ethereum, Aurora and NEAR Protocol.'
   },
   { 
     id: 'opensea', 
     name: 'OpenSea', 
     url: 'https://opensea.io', 
-    category: 'nft',
+    category: 'nft / social',
     description: 'The largest NFT marketplace for discovering, collecting, and trading digital assets. Buy, sell, and explore NFTs.'
   },
   { 
     id: 'lens', 
     name: 'Lens', 
     url: 'https://hey.xyz', 
-    category: 'social',
+    category: 'nft / social',
     description: 'A Web3 social graph protocol built on Polygon. Enables decentralized social networking experiences.'
   },
   { 
     id: 'rarible', 
     name: 'Rarible', 
     url: 'https://rarible.com', 
-    category: 'nft',
+    category: 'nft / social',
     description: 'A community-owned NFT marketplace. Create, sell, and collect digital items secured with blockchain.'
   },
   { 
     id: 'mycrypto', 
     name: 'MyCrypto', 
     url: 'https://app.mycrypto.com/sign-message', 
-    category: 'portfolio',
-    description: 'A free, open-source interface for interacting with blockchains. Manage Ethereum wallets and sign messages.'
+    category: 'portfolio / send',
+    description: 'A long-standing Ethereum wallet interface that emphasizes self-custody and security; trusted by early crypto users and power users for direct wallet management.'
   },
   { 
     id: 'safe', 
     name: 'Safe', 
     url: 'https://app.safe.global', 
     category: 'smart wallet',
-    description: 'The OG multi-signature wallet. A smart contract wallet that supports multiple keys and recovery methods.'
+    description: 'The OG multi-signature wallet for teams, DAOs, and power users. A smart contract wallet that supports multiple keys and recovery methods.'
+  },
+  { 
+    id: 'zapper', 
+    name: 'Zapper', 
+    url: 'https://zapper.xyz', 
+    category: 'portfolio / send',
+    description: 'See what\'s happening onchain. Track your portfolio and activity.'
+  },
+  { 
+    id: 'ens', 
+    name: 'ENS', 
+    url: 'https://app.ens.domains', 
+    category: 'nft / social',
+    description: 'The Ethereum Name Service lets you register human-readable .eth names for your wallet and web3 identity; popular among all kinds of Ethereum users to simplify crypto addresses.'
+  },
+  { 
+    id: '1inch', 
+    name: '1inch', 
+    url: 'https://app.1inch.io', 
+    category: 'swap',
+    description: 'A DEX aggregator that finds the best prices across many exchanges to optimize trades; favored by cost-conscious traders and whales.'
+  },
+  { 
+    id: 'cowswap', 
+    name: 'CowSwap', 
+    url: 'https://swap.cow.fi', 
+    category: 'swap',
+    description: 'Finds the lowest prices from all decentralized exchanges and DEX aggregators & saves you more with p2p trading and protection from MEV.'
+  },
+  { 
+    id: 'stakefish', 
+    name: 'Stakefish', 
+    url: 'https://stake.fish/dashboard', 
+    category: 'stake',
+    description: 'Non-custodial. Secure. Stake confidently with the longest operating validators since 2018.'
+  },
+  { 
+    id: 'sky', 
+    name: 'Sky', 
+    url: 'https://app.sky.money/', 
+    category: 'earn / borrow',
+    description: 'The new brand for MakerDAO, the creator of DAI, a decentralized stablecoin backed by collateral; used in many DeFi apps and seen as a pillar of Ethereum finance.'
+  },
+  { 
+    id: 'lido', 
+    name: 'Lido', 
+    url: 'https://stake.lido.fi', 
+    category: 'stake',
+    description: 'Ethereum\'s leading liquid staking token, with best-in-class security, deepest liquidity and competitive rewards.'
+  },
+  { 
+    id: 'rocketpool', 
+    name: 'Rocket Pool', 
+    url: 'https://stake.rocketpool.net', 
+    category: 'stake',
+    description: 'Rocket Pool is a decentralised staking protocol providing liquid & node staking products for the Ethereum (ETH) ecosystem.'
   },
 ];
 
@@ -1608,6 +1671,23 @@ export default function AppsScreen() {
     setIsAddAppSheetVisible(false);
   };
   
+  // Add an existing app to MY APPS
+  const handleAddToMyApps = (name: string, url: string) => {
+    // Create a unique ID
+    const id = `my_app_${name.replace(/\s+/g, '_').toLowerCase()}_${Math.floor(Math.random() * 10000)}`;
+    
+    const newApp: CustomApp = {
+      id,
+      name,
+      url,
+      category: 'my' // Set category to 'my'
+    };
+    
+    const updatedApps = [...customApps, newApp];
+    setCustomApps(updatedApps);
+    saveCustomApps(updatedApps);
+  };
+  
   // Delete a custom app
   const handleDeleteApp = (appId: string) => {
     const updatedApps = customApps.filter(app => app.id !== appId);
@@ -1706,6 +1786,7 @@ export default function AppsScreen() {
         appDescriptions={appDescriptions}
         onClearData={handleClearAppData}
         onDeleteApp={selectedCategory.toLowerCase() === 'my' ? handleDeleteApp : undefined}
+        onAddToMyApps={handleAddToMyApps}
       />
       
       <AddAppSheet

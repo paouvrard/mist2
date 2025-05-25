@@ -29,6 +29,7 @@ interface Props {
   appDescriptions: AppDescription[];
   onClearData: (appId: string) => void;
   onDeleteApp?: (appId: string) => void;
+  onAddToMyApps?: (name: string, url: string) => void;
 }
 
 const SPRING_CONFIG = {
@@ -36,16 +37,21 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
-export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData, onDeleteApp }: Props) {
+export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData, onDeleteApp, onAddToMyApps }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
   const [isRendered, setIsRendered] = useState(false);
   const [deletingApps, setDeletingApps] = useState<string[]>([]);
+  const [addedApps, setAddedApps] = useState<{ [key: string]: boolean }>({});
   const insets = useSafeAreaInsets();
   const textColor = useThemeColor({}, 'text');
   const { setHideTabBar } = useTabVisibility();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Get screen dimensions for max height calculation
+  const windowHeight = Dimensions.get('window').height;
+  const maxSheetHeight = windowHeight * 0.8; // 80% of screen height
+
   // Track if this is the "my" category
   const isCustomAppsCategory = categoryTitle.toLowerCase() === 'my';
 
@@ -120,12 +126,28 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
     }
   };
 
+  const handleAddToMyApps = (name: string, url: string) => {
+    if (onAddToMyApps) {
+      // Call the handler to add the app
+      onAddToMyApps(name, url);
+      
+      // Mark this app as added
+      setAddedApps(prev => ({ ...prev, [name]: true }));
+      
+      // Reset the button text after 1 second
+      setTimeout(() => {
+        setAddedApps(prev => ({ ...prev, [name]: false }));
+      }, 1000);
+    }
+  };
+
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    maxHeight: maxSheetHeight,
   }));
 
   // Make this sheet fit content properly without excessive space
@@ -165,6 +187,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
             paddingBottom: bottomInset,
             zIndex: 10001,
             elevation: 50,
+            maxHeight: maxSheetHeight, // Set max height to 80% of screen height
           },
           sheetStyle,
         ]}>
@@ -196,6 +219,11 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
                       {app.description}
                     </ThemedText>
                   ) : null}
+                  {app.url ? (
+                    <ThemedText style={styles.appUrl}>
+                      {app.url}
+                    </ThemedText>
+                  ) : null}
                   <View style={styles.buttonsRow}>
                     <TouchableOpacity 
                       style={styles.clearButton} 
@@ -205,6 +233,18 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
                         Clear Data
                       </ThemedText>
                     </TouchableOpacity>
+                    
+                    {!isCustomAppsCategory && onAddToMyApps && app.url && (
+                      <TouchableOpacity 
+                        style={styles.addButton} 
+                        onPress={() => handleAddToMyApps(app.name, app.url)}
+                        disabled={!!addedApps[app.name]} // Disable if already added
+                      >
+                        <ThemedText style={styles.addButtonText}>
+                          {addedApps[app.name] ? 'Added !' : 'Add to MY APPS'}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    )}
                     
                     {isCustomAppsCategory && onDeleteApp && (
                       <TouchableOpacity 
@@ -223,7 +263,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           ) : (
             <View style={styles.noAppsContainer}>
               <ThemedText style={styles.noAppsText}>
-                Your apps will appear here. Use MY to create custom links to Safe Apps and your other favorite applications.
+                Your apps will appear here. Use MY APPS to create custom links to Safe Apps and your other favorite applications.
               </ThemedText>
             </View>
           )}
@@ -315,14 +355,25 @@ const styles = StyleSheet.create({
     color: '#b8b8b8',
     marginBottom: 12,
   },
+  appUrl: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#b8b8b8',
+    marginBottom: 12,
+    fontWeight: '600',
+  },
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  leftButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   clearButton: {
     backgroundColor: '#555555',
-    paddingVertical: 8,
+    paddingVertical: 6, // Match addButton padding
     paddingHorizontal: 12,
     alignSelf: 'flex-start',
     marginTop: 8,
@@ -340,9 +391,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  addButton: {
+    backgroundColor: '#555555',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    alignSelf: 'flex-start',
+    marginTop: 8, // Same margin as clearButton and deleteButton
+    width: 140,
+    alignItems: 'center',
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderTopColor: '#888888',
+    borderLeftColor: '#888888',
+    borderBottomColor: '#444444',
+    borderRightColor: '#444444',
+  },
+  addButtonText: {
+    color: '#e8e8e8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   deleteButton: {
     backgroundColor: '#555555',
-    paddingVertical: 8,
+    paddingVertical: 6, // Match other buttons
     paddingHorizontal: 12,
     alignSelf: 'flex-start',
     marginTop: 8,
