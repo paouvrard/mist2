@@ -1,5 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView, View, Platform, Dimensions } from 'react-native';
+import { 
+  StyleSheet, 
+  TouchableOpacity, 
+  View, 
+  Platform, 
+  Dimensions,
+  FlatList,
+  NativeTouchEvent,
+  NativeModules,
+  UIManager
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -37,6 +47,46 @@ const SPRING_CONFIG = {
   stiffness: 200,
 };
 
+// Special Android-compatible button component
+const AndroidSafeButton = ({
+  onPress,
+  style,
+  children,
+  disabled = false
+}: {
+  onPress: () => void,
+  style: any,
+  children: React.ReactNode,
+  disabled?: boolean
+}) => {
+  // On Android, use a plain View with direct touch event handling
+  if (Platform.OS === 'android') {
+    return (
+      <View 
+        style={[style, disabled && { opacity: 0.6 }]} 
+        onTouchEnd={(e: any) => {
+          e.preventDefault();
+          if (!disabled) onPress();
+        }}
+      >
+        {children}
+      </View>
+    );
+  }
+  
+  // Use regular TouchableOpacity for iOS
+  return (
+    <TouchableOpacity
+      style={[style, disabled && { opacity: 0.6 }]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+};
+
 export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescriptions, onClearData, onDeleteApp, onAddToMyApps }: Props) {
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);
@@ -56,7 +106,6 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
   const isCustomAppsCategory = categoryTitle.toLowerCase() === 'my';
 
   // Forcibly keep tab bar hidden with an interval when the sheet is visible
-  // This ensures it stays hidden even if other components try to show it
   useEffect(() => {
     if (isVisible) {
       // Immediately hide the tab bar
@@ -168,6 +217,75 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
     onClose();
   };
 
+  // Render each app item
+  const renderAppItem = ({ item: app }: { item: AppDescription }) => {
+    // Skip apps that are being deleted
+    if (deletingApps.includes(app.id)) {
+      return null;
+    }
+    
+    return (
+      <View key={app.id} style={styles.appItem}>
+        <ThemedText style={styles.appName}>{app.name}</ThemedText>
+        
+        {app.description ? (
+          <ThemedText style={styles.appDescription}>
+            {app.description}
+          </ThemedText>
+        ) : null}
+        
+        {app.url ? (
+          <ThemedText style={styles.appUrl}>
+            {app.url}
+          </ThemedText>
+        ) : null}
+        
+        <View style={styles.buttonsRow}>
+          <AndroidSafeButton 
+            style={styles.clearButton} 
+            onPress={() => handleClearData(app.id)}
+          >
+            <ThemedText style={styles.clearButtonText}>
+              Clear Data
+            </ThemedText>
+          </AndroidSafeButton>
+          
+          {!isCustomAppsCategory && onAddToMyApps && app.url && (
+            <AndroidSafeButton 
+              style={styles.addButton} 
+              onPress={() => handleAddToMyApps(app.name, app.url)}
+              disabled={!!addedApps[app.name]} // Disable if already added
+            >
+              <ThemedText style={styles.addButtonText}>
+                {addedApps[app.name] ? 'Added !' : 'Add to MY APPS'}
+              </ThemedText>
+            </AndroidSafeButton>
+          )}
+          
+          {isCustomAppsCategory && onDeleteApp && (
+            <AndroidSafeButton 
+              style={styles.deleteButton} 
+              onPress={() => handleDeleteApp(app.id)}
+            >
+              <ThemedText style={styles.deleteButtonText}>
+                Delete App
+              </ThemedText>
+            </AndroidSafeButton>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  // Render empty list component
+  const renderEmptyList = () => (
+    <View style={styles.noAppsContainer}>
+      <ThemedText style={styles.noAppsText}>
+        Your apps will appear here. Use MY APPS to create custom links to Safe Apps and your other favorite applications.
+      </ThemedText>
+    </View>
+  );
+
   return (
     <>
       <Animated.View
@@ -187,7 +305,7 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
             paddingBottom: bottomInset,
             zIndex: 10001,
             elevation: 50,
-            maxHeight: maxSheetHeight, // Set max height to 80% of screen height
+            maxHeight: maxSheetHeight,
           },
           sheetStyle,
         ]}>
@@ -201,73 +319,17 @@ export function AppInfoSheet({ isVisible, onClose, categoryTitle, appDescription
           </TouchableOpacity>
         </View>
         
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={{ paddingBottom: 0 }}>
-          {appDescriptions.length > 0 ? (
-            appDescriptions.map((app) => {
-              // Skip apps that are being deleted
-              if (deletingApps.includes(app.id)) {
-                return null;
-              }
-              
-              return (
-                <View key={app.id} style={styles.appItem}>
-                  <ThemedText style={styles.appName}>{app.name}</ThemedText>
-                  {app.description ? (
-                    <ThemedText style={styles.appDescription}>
-                      {app.description}
-                    </ThemedText>
-                  ) : null}
-                  {app.url ? (
-                    <ThemedText style={styles.appUrl}>
-                      {app.url}
-                    </ThemedText>
-                  ) : null}
-                  <View style={styles.buttonsRow}>
-                    <TouchableOpacity 
-                      style={styles.clearButton} 
-                      onPress={() => handleClearData(app.id)}
-                    >
-                      <ThemedText style={styles.clearButtonText}>
-                        Clear Data
-                      </ThemedText>
-                    </TouchableOpacity>
-                    
-                    {!isCustomAppsCategory && onAddToMyApps && app.url && (
-                      <TouchableOpacity 
-                        style={styles.addButton} 
-                        onPress={() => handleAddToMyApps(app.name, app.url)}
-                        disabled={!!addedApps[app.name]} // Disable if already added
-                      >
-                        <ThemedText style={styles.addButtonText}>
-                          {addedApps[app.name] ? 'Added !' : 'Add to MY APPS'}
-                        </ThemedText>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {isCustomAppsCategory && onDeleteApp && (
-                      <TouchableOpacity 
-                        style={styles.deleteButton} 
-                        onPress={() => handleDeleteApp(app.id)}
-                      >
-                        <ThemedText style={styles.deleteButtonText}>
-                          Delete App
-                        </ThemedText>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.noAppsContainer}>
-              <ThemedText style={styles.noAppsText}>
-                Your apps will appear here. Use MY APPS to create custom links to Safe Apps and your other favorite applications.
-              </ThemedText>
-            </View>
-          )}
-        </ScrollView>
+        <FlatList
+          data={appDescriptions}
+          renderItem={renderAppItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ paddingBottom: 0, padding: 16 }}
+          ListEmptyComponent={renderEmptyList}
+          removeClippedSubviews={false}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          android_disableSound={true}
+        />
       </Animated.View>
     </>
   );
@@ -326,9 +388,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#ffffff',
     borderBottomColor: '#555555',
     borderRightColor: '#555555',
-  },
-  content: {
-    padding: 16,
   },
   appItem: {
     padding: 16,
