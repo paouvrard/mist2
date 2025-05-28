@@ -135,6 +135,11 @@ export function WalletTypeSheet({ isVisible, onClose, onSelectWalletType }: Prop
             activeOpacity={0.8}>
             <ThemedText style={[styles.buttonText, styles.disabledText]}>Private Key (Coming Soon)</ThemedText>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.disabledButton]}
+            activeOpacity={0.8}>
+            <ThemedText style={[styles.buttonText, styles.disabledText]}>Smart Wallet (Coming Soon)</ThemedText>
+          </TouchableOpacity>
         </View>
       </Animated.View>
     </>

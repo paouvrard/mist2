@@ -23,6 +23,12 @@ If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
 - **Privacy-focused**: No tracking or data collection, this is a tool not a product
 - Open source
 
+<div align="center">
+  <img src="readme/apps.png" alt="apps" width="17%" style="margin-right: 1%">
+  <img src="readme/wallets.png" alt="wallets" width="17%" style="margin-right: 1%">
+  <img src="readme/app.png" alt="app" width="17%">
+</div>
+
 ### Disclaimer
 
 Mist2 is a self-custody wallet. You are responsible for securing your private keys and recovery phrases. We do not store your keys, collect your data, or have the ability to recover funds. Always review transactions and messages before signing them.

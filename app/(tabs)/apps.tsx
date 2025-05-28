@@ -88,7 +88,7 @@ const favoriteApps = [
   { 
     id: 'mycrypto', 
     name: 'MyCrypto', 
-    url: 'https://app.mycrypto.com/sign-message', 
+    url: 'https://app.mycrypto.com', 
     category: 'portfolio / send',
     description: 'A long-standing Ethereum wallet interface that emphasizes self-custody and security; trusted by early crypto users and power users for direct wallet management.'
   },
