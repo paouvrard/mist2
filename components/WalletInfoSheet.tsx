@@ -10,7 +10,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { getWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
@@ -34,7 +33,6 @@ export function WalletInfoSheet({ isVisible, onClose, onDisconnect, onSwitchWall
   const [isRendered, setIsRendered] = useState(false);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const insets = useSafeAreaInsets();
-  const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
 
   useEffect(() => {

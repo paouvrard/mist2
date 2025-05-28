@@ -17,10 +17,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
@@ -37,7 +35,6 @@ const SPRING_CONFIG = {
 
 export function ViewOnlyAddressSheet({ isVisible, onClose, onConnect }: Props) {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const [address, setAddress] = useState('');
   const [isRendered, setIsRendered] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);

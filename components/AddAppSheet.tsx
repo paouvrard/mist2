@@ -18,7 +18,6 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from './ThemedText';
@@ -44,7 +43,6 @@ export function AddAppSheet({ isVisible, onClose, onAddApp }: Props) {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const textColor = useThemeColor({}, 'text');
   const { setHideTabBar } = useTabVisibility();
-  const tabBarHeight = useBottomTabBarHeight();
 
   const translateY = useSharedValue(1000);
   const opacity = useSharedValue(0);

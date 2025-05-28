@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sendTransaction, switchChain } from '@wagmi/core';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit-wagmi-react-native';
-import { keccak256, parseSignature, serializeTransaction, type Transaction } from 'viem';
+import { keccak256, type Transaction } from 'viem';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';

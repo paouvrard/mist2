@@ -6,9 +6,6 @@ import {
   Platform, 
   Dimensions,
   FlatList,
-  NativeTouchEvent,
-  NativeModules,
-  UIManager
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,

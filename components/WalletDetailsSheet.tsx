@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { type Wallet, truncateAddress } from '@/utils/walletStorage';
+import { type Wallet } from '@/utils/walletStorage';
 
 interface Props {
   isVisible: boolean;

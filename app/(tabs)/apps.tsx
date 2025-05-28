@@ -311,32 +311,19 @@ export default function AppsScreen() {
   // Get references and style values
   const webViewRefs = useRef<{[key: string]: WebView | null}>({});
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'background');
-  const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const { setHideTabBar } = useTabVisibility();
   const params = useLocalSearchParams();
   
-  // Define navigation bar colors
-  const navBarBackgroundColor = '#333333'; // Dark gray background for navigation bar
-  const navBarTextColor = '#CCCCCC'; // Light gray for text and icons
-
-  // Track if this is the first time focusing or if we're returning to the app after going to another tab
-  const [isFocused, setIsFocused] = useState(false);
   const wasUnfocused = useRef(false);
 
   // Add focus effect to track when the screen gains and loses focus
   useFocusEffect(
     React.useCallback(() => {
-      // When the screen comes into focus
-      setIsFocused(true);
-      
       // We don't want to reset to welcome page when returning from other tabs
       wasUnfocused.current = false;
       
       return () => {
         // When the screen loses focus
-        setIsFocused(false);
         wasUnfocused.current = true;
       };
     }, [])

@@ -7,7 +7,6 @@ import { useAccount, useWalletClient } from 'wagmi';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { WalletTypeSheet } from '@/components/WalletTypeSheet';
@@ -17,7 +16,6 @@ import { WalletDetailsSheet } from '@/components/WalletDetailsSheet';
 import { WalletDescriptionSheet } from '@/components/WalletDescriptionSheet';
 import { WalletDescriptionFrame } from '@/components/WalletDescriptionFrame';
 import { addWallet, getWallets, deleteWallet, reorderWallets, type Wallet, truncateAddress } from '@/utils/walletStorage';
-import { HitoManager } from '@/utils/hito/hitoManager';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
 
 function Wallets() {
@@ -293,9 +291,6 @@ function Wallets() {
             ListEmptyComponent={
               !isLoadingWallets ? (
                 <View style={styles.emptyListContainer}>
-                  <ThemedText style={styles.emptyListText}>
-                    No wallets added yet
-                  </ThemedText>
                   <WalletDescriptionFrame />
                 </View>
               ) : (

@@ -404,7 +404,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#3a3a3a',
     borderRadius: 0,
     padding: 12,
-    paddingBottom: 0,
     marginBottom: 6,
     borderTopWidth: 2,
     borderLeftWidth: 2,
