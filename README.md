@@ -24,9 +24,9 @@ If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
 - Open source
 
 <div align="center">
-  <img src="readme/apps.png" alt="apps" width="17%" style="margin-right: 1%">
-  <img src="readme/wallets.png" alt="wallets" width="17%" style="margin-right: 1%">
-  <img src="readme/app.png" alt="app" width="17%">
+  <img src="readme/apps.png" alt="apps" width="25%" style="margin-right: 3%">
+  <img src="readme/wallets.png" alt="wallets" width="25%" style="margin-right: 3%">
+  <img src="readme/app.png" alt="app" width="25%">
 </div>
 
 ### Disclaimer

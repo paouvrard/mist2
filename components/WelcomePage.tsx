@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { AppInfoSheet, AppDescription } from './AppInfoSheet';
@@ -225,23 +226,31 @@ export function WelcomePage({
       </View>
       
       <View style={styles.mainContainer}>
-        {/* Two column scrollable area for regular categories */}
-        <ScrollView 
-          style={styles.columnsScrollContainer}
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}>
-          <View style={styles.columnsContainer}>
-            {/* Left Column */}
-            <View style={styles.column}>
-              {leftColumn.map(renderCategoryCard)}
+        {/* Two column scrollable area for regular categories with mist effect */}
+        <View style={styles.mistContainer}>
+          {/* Bottom mist gradient only */}
+          <LinearGradient
+            colors={['rgba(42, 42, 42, 0)', 'rgba(42, 42, 42, 1)']}
+            style={styles.mistOverlayBottom}
+          />
+          
+          <ScrollView 
+            style={styles.columnsScrollContainer}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}>
+            <View style={styles.columnsContainer}>
+              {/* Left Column */}
+              <View style={styles.column}>
+                {leftColumn.map(renderCategoryCard)}
+              </View>
+              
+              {/* Right Column */}
+              <View style={styles.column}>
+                {rightColumn.map(renderCategoryCard)}
+              </View>
             </View>
-            
-            {/* Right Column */}
-            <View style={styles.column}>
-              {rightColumn.map(renderCategoryCard)}
-            </View>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
 
         {/* MY APPS Section - Fixed below columns, not inside the ScrollView */}
         <View style={styles.myAppsSection}>
@@ -293,12 +302,29 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
   },
+  // Mist effect container
+  mistContainer: {
+    flex: 1,
+    position: 'relative',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
   columnsScrollContainer: {
     flex: 1,
+  },
+  // Mist gradient overlays
+  mistOverlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 30,
+    zIndex: 2,
   },
   columnsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    padding: 2, // Add a little padding to keep content away from mist edges
   },
   column: {
     flexBasis: '48%', // Not quite 50% to allow for spacing
