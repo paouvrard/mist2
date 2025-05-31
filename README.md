@@ -39,6 +39,7 @@ If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
 ### TODO
 
 - Missing hardware wallets (Ledger, Lattice1...)
+- Links to hardware wallet product websites.
 - Hito eip712 support to use with Safe Apps.
 - Switch chain from wallet
 - Configure chains in settings

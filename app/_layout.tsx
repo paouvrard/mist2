@@ -59,12 +59,8 @@ export default function RootLayout() {
     if (loaded) {
       SplashScreen.hideAsync();
     }
-
-    // Set Android status bar color to match the app's navigation bar grey color
-    if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor('#2a2a2a');
-      StatusBar.setTranslucent(false);
-    }
+    StatusBar.setBackgroundColor('#2a2a2a');
+    StatusBar.setTranslucent(false);
   }, [loaded]);
 
   if (!loaded) {

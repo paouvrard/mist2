@@ -251,7 +251,7 @@ const AppWebView = React.forwardRef<WebView, AppWebViewProps>(({
       
       {/* Status bar spacer - only visible on iOS */}
       {Platform.OS === 'ios' && (
-        <View style={{ height: statusBarHeight, backgroundColor }} />
+        <View style={{ height: statusBarHeight, backgroundColor: '#2a2a2a' }} />
       )}
       
       <WebView
