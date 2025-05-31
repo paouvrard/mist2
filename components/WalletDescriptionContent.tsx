@@ -33,7 +33,7 @@ export function WalletDescriptionContent() {
       </View>
       
       <View style={styles.disclaimerBox}>
-        <ThemedText style={styles.disclaimerTitle}>Disclaimer</ThemedText>
+        <ThemedText style={styles.disclaimerTitle}>Warning</ThemedText>
         <ThemedText style={styles.disclaimerText}>
           Mist2 is a self-custody wallet. You are responsible for securing your private keys and recovery phrases. We do not store your keys, collect your data, or have the ability to recover funds. Always review transactions and messages before signing them.
         </ThemedText>

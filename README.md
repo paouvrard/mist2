@@ -1,27 +1,33 @@
 # Welcome to Mist2 ☁️
 
-This started out as an experiment to use Claud 3.7 and it became this app. AI wrote 98% of the code, particularly the UI components. But using libraries like viem and interacting with hardware wallets required a lot of human fixes and review of the critical logic.
+Mist2 is your minimalist mobile Ethereum app gateway. It focuses on apps, wallet connectivity, accessibility, privacy and security.
+This wallet is for:
+- power users and OGs who want to access and manage multiple hardware wallets on mobile
+- new users who want to get a safe introduction to apps and avoid scams
+- mobile first users who value flexibility and open software
 
+## Why Mist2?
 
-## What is Mist2?
+- There are few mobile wallets with hardware wallet support for using Ethereum apps.
+- WalletConnect browser redirects are buggy and add an extra step.
+- Use any type of smart wallet signer (hardware wallets, WalletConnect wallets).
+- Easily access popular Apps.
+- WalletConnect can become unavailable for any reason (bridge network not available, app bug, wallet bug...).
+- Wallet browsers are never as good as real browsers but those don't have wallet functionality (except Brave).
+- Brave doesn't support hardware and smart wallets.
 
-Mist2 is your minimalist mobile Ethereum app gateway. It focuses on wallet connectivity, accessibility, privacy and security.
-
-There are few mobile wallets with hardware wallet support for using Ethereum apps (mainly only MetaMask), WalletConnect can become unavailable for any reason (bridge network, app bug, wallet bug...), your favorite mobile wallet doesn't support all hardware wallets if any, your favorite app might not support WalletConnect, WalletConnect browser redirects are buggy and add an extra step.
-
-Simplify: explore Ethereum apps without managing embedded browser tabs.
-
-Focus on wallet connectivity, embedded browser apps can manage your portfolio.
-
-If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
+Mist2 focuses on flexible wallet connectivity, everything else like viewing a portfolio and token prices can be done with APPs.
 
 ### Key Features:
 
 - Hardware wallet support on the go
 - Manage multiple wallets: for privacy it is recommended to use many different addresses and to avoid linking them on-chain
 - Drag and drop to organise your wallets
+- Get APP recommendations, add any APP url
 - **Privacy-focused**: No tracking or data collection, this is a tool not a product
 - Open source
+
+If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
 
 <div align="center">
   <img src="readme/apps.png" alt="apps" width="25%" style="margin-right: 3%">
@@ -29,9 +35,23 @@ If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
   <img src="readme/app.png" alt="app" width="25%">
 </div>
 
-### Disclaimer
+### TODO
+
+- Missing hardware wallets (Ledger, Lattice1...)
+- Hito eip712 support to use with Safe Apps.
+- Switch chain from wallet
+- Configure chains in settings
+- Explorer links to view transaction history
+- Add APP to cancel or speed up transaction
+- Transaction simulation
+- Edit transaction request fields (nonce, value, data, to)
+- Copy transaction request fields (nonce, value, data, to)
+- Explorer links to transaction request addresses (to, parsed data address arguments)
+
+### Warning
 
 Mist2 is a self-custody wallet. You are responsible for securing your private keys and recovery phrases. We do not store your keys, collect your data, or have the ability to recover funds. Always review transactions and messages before signing them.
+This started out as an experiment to use Claud 3.7 and it became this app. AI wrote 98% of the code, particularly the UI components. But using libraries like viem and interacting with hardware wallets required a lot of human fixes and review of the critical logic.
 
 ## Get started
 
