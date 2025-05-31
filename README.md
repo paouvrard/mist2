@@ -30,9 +30,10 @@ Mist2 focuses on flexible wallet connectivity, everything else like viewing a po
 If you enjoy [frame.sh](https://frame.sh/) Mist2 should feel familiar.
 
 <div align="center">
-  <img src="readme/apps.png" alt="apps" width="25%" style="margin-right: 3%">
-  <img src="readme/wallets.png" alt="wallets" width="25%" style="margin-right: 3%">
-  <img src="readme/app.png" alt="app" width="25%">
+  <img src="readme/apps.png" alt="apps" width="20%" style="margin-right: 3%">
+  <img src="readme/wallets.png" alt="wallets" width="20%" style="margin-right: 3%">
+  <img src="readme/wallet.png" alt="wallets" width="20%" style="margin-right: 3%">
+  <img src="readme/app.png" alt="app" width="20%">
 </div>
 
 ### TODO
