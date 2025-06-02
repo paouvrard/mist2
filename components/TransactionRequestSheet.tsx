@@ -140,7 +140,7 @@ export function TransactionRequestSheet({
       } else if (currentWallet.type === 'wallet-connect') {
         setWalletConnectSending(true);
         await switchChain(wagmiConfig, { chainId: currentChainId });
-        const hash = await sendTransaction(wagmiConfig, populatedTransaction);
+        const hash = await sendTransaction(wagmiConfig, { ...populatedTransaction, data: populatedTransaction.input });
         
         if (onSuccess) {
           onSuccess(hash);
